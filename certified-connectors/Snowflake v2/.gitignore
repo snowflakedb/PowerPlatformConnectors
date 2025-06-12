@@ -64,6 +64,9 @@ QLogs
 ## Secret Disclosure Risks
 ###
 
+# Test secrets file
+test-secrets.json
+
 # *.pfx
 *.[Pp][Ff][Xx]
 
