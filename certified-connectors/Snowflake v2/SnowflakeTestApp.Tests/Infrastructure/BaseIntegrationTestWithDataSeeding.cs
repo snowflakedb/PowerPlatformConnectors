@@ -99,15 +99,11 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         }
 
         /// <summary>
-        /// Optional cleanup - override this if you want to clean up test data after tests
-        /// By default, we don't clean up to allow for test debugging and data inspection
+        /// Method to clean up test data after each test
         /// </summary>
         [TestCleanup]
         public override void TestCleanup()
         {
-            // Optionally clean up test data
-            // Uncomment the following lines if you want automatic cleanup
-            /*
             if (DataSeeder != null && IsDataSeeded)
             {
                 foreach (var tableName in TestTables)
@@ -123,7 +119,6 @@ namespace SnowflakeTestApp.Tests.Infrastructure
                     }
                 }
             }
-            */
             
             base.TestCleanup();
         }
