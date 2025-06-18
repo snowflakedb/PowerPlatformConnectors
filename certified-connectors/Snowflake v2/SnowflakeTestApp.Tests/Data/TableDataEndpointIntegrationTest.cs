@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace SnowflakeTestApp.Tests
+namespace SnowflakeTestApp.Tests.Data
 {
     /// <summary>
     /// Integration tests for table data endpoints (items CRUD operations).

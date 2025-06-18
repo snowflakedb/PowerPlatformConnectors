@@ -34,7 +34,18 @@ namespace SnowflakeTestApp.Tests
         /// </summary>
         protected string GetTestToken()
         {
-            return TestConfiguration.BearerToken;
+            var token = TestConfiguration.BearerToken;
+            
+            // Check if the token is still the placeholder value
+            if (string.IsNullOrEmpty(token) || 
+                token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) ||
+                token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.Inconclusive("Bearer token not configured. Please update TestConfiguration.BearerToken with a valid OAuth bearer token. " +
+                                   "See README.md for instructions on generating OAuth tokens.");
+            }
+            
+            return token;
         }
 
         /// <summary>
@@ -62,7 +73,7 @@ namespace SnowflakeTestApp.Tests
         protected void AssertResponseHasContent(HttpResponseMessage response)
         {
             var content = response.Content.ReadAsStringAsync().Result;
-            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+            Assert.IsFalse(string.IsNullOrEmpty(content), $"Response content should not be empty. Status: {response.StatusCode}. Content: '{content}'");
         }
 
         /// <summary>
@@ -71,7 +82,7 @@ namespace SnowflakeTestApp.Tests
         protected void AssertValidJsonResponse(HttpResponseMessage response)
         {
             var content = response.Content.ReadAsStringAsync().Result;
-            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+            Assert.IsFalse(string.IsNullOrEmpty(content), $"Response content should not be empty. Status: {response.StatusCode}");
             
             try
             {
@@ -79,7 +90,28 @@ namespace SnowflakeTestApp.Tests
             }
             catch (JsonException ex)
             {
-                Assert.Fail($"Response content is not valid JSON: {ex.Message}\nContent: {content}");
+                Assert.Fail($"Response content is not valid JSON: {ex.Message}\nStatus: {response.StatusCode}\nContent: {content}");
+            }
+        }
+
+        /// <summary>
+        /// Helper method to check if the application is running at the expected URL
+        /// </summary>
+        protected void EnsureApplicationIsRunning()
+        {
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                {
+                    var response = client.GetAsync(BaseUrl).Result;
+                    // Any response (even error) means the app is running
+                }
+            }
+            catch (Exception ex)
+            {
+                Assert.Inconclusive($"SnowflakeTestApp is not running at {BaseUrl}. " +
+                                   "Please start the application before running integration tests. " +
+                                   $"Error: {ex.Message}");
             }
         }
     }

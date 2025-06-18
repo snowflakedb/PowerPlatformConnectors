@@ -65,8 +65,8 @@ QLogs
 ## Secret Disclosure Risks
 ###
 
-# Test secrets file
-test-secrets.json
+# Test configuration file with bearer token
+SnowflakeTestApp.Tests/TestConfiguration.cs
 
 # *.pfx
 *.[Pp][Ff][Xx]

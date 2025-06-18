@@ -1,8 +1,8 @@
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Net;
 
-namespace SnowflakeTestApp.Tests
+namespace SnowflakeTestApp.Tests.Metadata
 {
     /// <summary>
     /// Integration tests for the datasets metadata endpoint.

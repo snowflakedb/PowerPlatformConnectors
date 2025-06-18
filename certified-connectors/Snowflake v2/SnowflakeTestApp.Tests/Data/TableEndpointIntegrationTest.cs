@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SnowflakeTestApp.Tests
+namespace SnowflakeTestApp.Tests.Data
 {
     /// <summary>
     /// Integration tests for the table endpoints.

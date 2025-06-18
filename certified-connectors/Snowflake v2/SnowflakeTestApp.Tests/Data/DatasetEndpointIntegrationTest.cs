@@ -1,11 +1,10 @@
-using System;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SnowflakeTestApp.Tests
+namespace SnowflakeTestApp.Tests.Data
 {
     /// <summary>
     /// Integration tests for the /dataset endpoint.
