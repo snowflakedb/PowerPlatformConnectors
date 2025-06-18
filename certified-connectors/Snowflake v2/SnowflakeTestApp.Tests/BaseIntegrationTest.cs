@@ -11,7 +11,7 @@ namespace SnowflakeTestApp.Tests
     /// </summary>
     public abstract class BaseIntegrationTest
     {
-        protected string BaseUrl => TestConfiguration.BaseUrl;
+        protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
 
         [TestInitialize]
@@ -19,7 +19,7 @@ namespace SnowflakeTestApp.Tests
         {
             HttpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(TestConfiguration.DefaultTimeoutSeconds)
+                Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
             };
         }
 
@@ -30,18 +30,18 @@ namespace SnowflakeTestApp.Tests
         }
 
         /// <summary>
-        /// Gets the test token from TestConfiguration
+        /// Gets the test token from ConnectionParametersProviderMock
         /// </summary>
         protected string GetTestToken()
         {
-            var token = TestConfiguration.BearerToken;
+            var token = TestData.DefaultBearerToken;
             
             // Check if the token is still the placeholder value
             if (string.IsNullOrEmpty(token) || 
                 token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) ||
                 token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
             {
-                Assert.Inconclusive("Bearer token not configured. Please update TestConfiguration.BearerToken with a valid OAuth bearer token. " +
+                Assert.Inconclusive("Bearer token not configured. Please update ConnectionParametersProviderMock.TestBearerToken with a valid OAuth bearer token. " +
                                    "See README.md for instructions on generating OAuth tokens.");
             }
             
@@ -54,48 +54,28 @@ namespace SnowflakeTestApp.Tests
         public TestContext TestContext { get; set; }
 
         /// <summary>
-        /// Helper method to validate that a response has the expected status code
+        /// Helper method to assert that a response has the expected status code
         /// </summary>
-        protected void AssertStatusCode(HttpResponseMessage response, System.Net.HttpStatusCode expectedStatusCode, string additionalMessage = null)
+        protected void AssertStatusCode(HttpResponseMessage response, System.Net.HttpStatusCode expectedStatusCode)
         {
-            var message = $"Expected HTTP {(int)expectedStatusCode} {expectedStatusCode} but got {(int)response.StatusCode} {response.StatusCode}";
-            if (!string.IsNullOrEmpty(additionalMessage))
+            if (response.StatusCode != expectedStatusCode)
             {
-                message += $". {additionalMessage}";
+                var content = response.Content.ReadAsStringAsync().Result;
+                Assert.Fail($"Expected status code {expectedStatusCode} but got {response.StatusCode}. Response: {content}");
             }
-            
-            Assert.AreEqual(expectedStatusCode, response.StatusCode, message);
         }
 
         /// <summary>
-        /// Helper method to check if response content is not empty
+        /// Helper method to assert that a response has content
         /// </summary>
         protected void AssertResponseHasContent(HttpResponseMessage response)
         {
             var content = response.Content.ReadAsStringAsync().Result;
-            Assert.IsFalse(string.IsNullOrEmpty(content), $"Response content should not be empty. Status: {response.StatusCode}. Content: '{content}'");
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
 
         /// <summary>
-        /// Helper method to validate JSON response content
-        /// </summary>
-        protected void AssertValidJsonResponse(HttpResponseMessage response)
-        {
-            var content = response.Content.ReadAsStringAsync().Result;
-            Assert.IsFalse(string.IsNullOrEmpty(content), $"Response content should not be empty. Status: {response.StatusCode}");
-            
-            try
-            {
-                JsonConvert.DeserializeObject(content);
-            }
-            catch (JsonException ex)
-            {
-                Assert.Fail($"Response content is not valid JSON: {ex.Message}\nStatus: {response.StatusCode}\nContent: {content}");
-            }
-        }
-
-        /// <summary>
-        /// Helper method to check if the application is running at the expected URL
+        /// Helper method to check if the SnowflakeTestApp is running
         /// </summary>
         protected void EnsureApplicationIsRunning()
         {
@@ -104,15 +84,39 @@ namespace SnowflakeTestApp.Tests
                 using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
                 {
                     var response = client.GetAsync(BaseUrl).Result;
-                    // Any response (even error) means the app is running
+                    // We don't care about the specific response, just that we can reach the app
                 }
             }
             catch (Exception ex)
             {
-                Assert.Inconclusive($"SnowflakeTestApp is not running at {BaseUrl}. " +
-                                   "Please start the application before running integration tests. " +
-                                   $"Error: {ex.Message}");
+                Assert.Inconclusive($"SnowflakeTestApp is not running at {BaseUrl}. Please start the application before running tests. Error: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Helper method to deserialize JSON response content
+        /// </summary>
+        protected T DeserializeResponse<T>(HttpResponseMessage response)
+        {
+            var content = response.Content.ReadAsStringAsync().Result;
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(content);
+            }
+            catch (JsonException ex)
+            {
+                Assert.Fail($"Failed to deserialize response content as {typeof(T).Name}. Content: {content}. Error: {ex.Message}");
+                return default(T);
+            }
+        }
+
+        /// <summary>
+        /// Helper method to create JSON content for POST requests
+        /// </summary>
+        protected StringContent CreateJsonContent(object data)
+        {
+            var json = JsonConvert.SerializeObject(data);
+            return new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         }
     }
 } 

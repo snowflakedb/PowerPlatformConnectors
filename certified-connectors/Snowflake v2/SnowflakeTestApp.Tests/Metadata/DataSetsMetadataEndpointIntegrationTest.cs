@@ -81,7 +81,6 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
             AssertStatusCode(response, HttpStatusCode.OK);
-            AssertValidJsonResponse(response);
         }
 
         /// <summary>

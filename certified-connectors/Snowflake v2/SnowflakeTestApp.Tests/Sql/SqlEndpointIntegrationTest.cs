@@ -14,7 +14,7 @@ namespace SnowflakeTestApp.Tests.Sql
     /// This test class automatically creates and seeds the CUSTOMERS test table before running tests.
     /// </summary>
     [TestClass]
-    public class SqlTests : BaseIntegrationTestWithDataSeeding
+    public class SqlEndpointIntegrationTest : BaseIntegrationTestWithDataSeeding
     {
         [TestInitialize]
         public override void TestInitialize()
@@ -37,11 +37,15 @@ namespace SnowflakeTestApp.Tests.Sql
             HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Query the seeded test data
+            // Query the seeded test data with full database context
             var sqlPayload = new
             {
                 statement = $"SELECT COUNT(*) as total_customers FROM {TestData.DefaultTable}",
-                timeout = TestData.DefaultSqlTimeout
+                timeout = TestData.DefaultSqlTimeout,
+                database = TestData.DefaultDatabase,
+                schema = TestData.DefaultSchema,
+                warehouse = TestData.DefaultWarehouse,
+                role = TestData.DefaultRole
             };
 
             var json = JsonConvert.SerializeObject(sqlPayload);
@@ -49,12 +53,20 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            // If we get 500 Internal Server Error, it might be due to invalid token or app configuration
-            if (response.StatusCode == HttpStatusCode.InternalServerError)
+            // If we get error responses, log the content to understand the issue
+            if (!response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                Assert.Inconclusive($"SQL endpoint returned Internal Server Error. This might be due to invalid bearer token, missing Snowflake configuration, or application setup issues. " +
-                                   $"Response: {responseContent}");
+                TestContext?.WriteLine($"Error Response ({response.StatusCode}): {responseContent}");
+                
+                if (response.StatusCode == HttpStatusCode.InternalServerError)
+                {
+                    Assert.Inconclusive($"SQL endpoint returned Internal Server Error. This might be due to invalid bearer token, missing Snowflake configuration, or application setup issues. " +
+                                       $"Response: {responseContent}");
+                }
+                
+                // For other errors, include the response content in the assertion failure
+                Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}. Response: {responseContent}");
             }
             
             Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
@@ -79,11 +91,15 @@ namespace SnowflakeTestApp.Tests.Sql
             HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Query specific seeded customer data
+            // Query specific seeded customer data with full database context
             var sqlPayload = new
             {
                 statement = $"SELECT NAME, EMAIL, BALANCE FROM {TestData.DefaultTable} WHERE NAME = 'John Doe' OR NAME = 'Jane Smith' ORDER BY NAME",
-                timeout = TestData.DefaultSqlTimeout
+                timeout = TestData.DefaultSqlTimeout,
+                database = TestData.DefaultDatabase,
+                schema = TestData.DefaultSchema,
+                warehouse = TestData.DefaultWarehouse,
+                role = TestData.DefaultRole
             };
 
             var json = JsonConvert.SerializeObject(sqlPayload);
@@ -91,12 +107,20 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            // If we get 500 Internal Server Error, it might be due to invalid token or app configuration
-            if (response.StatusCode == HttpStatusCode.InternalServerError)
+            // If we get error responses, log the content to understand the issue
+            if (!response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                Assert.Inconclusive($"SQL endpoint returned Internal Server Error when querying seeded data. This might be due to invalid bearer token, missing Snowflake configuration, or application setup issues. " +
-                                   $"Response: {responseContent}");
+                TestContext?.WriteLine($"Error Response ({response.StatusCode}): {responseContent}");
+                
+                if (response.StatusCode == HttpStatusCode.InternalServerError)
+                {
+                    Assert.Inconclusive($"SQL endpoint returned Internal Server Error when querying seeded data. This might be due to invalid bearer token, missing Snowflake configuration, or application setup issues. " +
+                                       $"Response: {responseContent}");
+                }
+                
+                // For other errors, include the response content in the assertion failure
+                Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}. Response: {responseContent}");
             }
             
             Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
@@ -132,11 +156,12 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            // Accept various authentication-related error codes
+            // Accept various authentication-related error codes (BadRequest is also valid for missing headers)
             Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
                          response.StatusCode == HttpStatusCode.Forbidden ||
+                         response.StatusCode == HttpStatusCode.BadRequest ||
                          response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected authentication failure but got {response.StatusCode}");
+                         $"Expected authentication/validation failure but got {response.StatusCode}");
         }
 
         /// <summary>
@@ -253,11 +278,10 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/{mockStatementHandle}", content);
             
-            // This endpoint expects either success, BadRequest, or InternalServerError
+            // This endpoint should return success or BadRequest for mock/invalid handles
             Assert.IsTrue(response.IsSuccessStatusCode || 
-                         response.StatusCode == HttpStatusCode.BadRequest ||
-                         response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected success, BadRequest, or InternalServerError but got {response.StatusCode}");
+                         response.StatusCode == HttpStatusCode.BadRequest,
+                         $"Expected success or BadRequest but got {response.StatusCode}");
         }
 
         /// <summary>
@@ -277,11 +301,12 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/{mockStatementHandle}", content);
             
-            // Accept various authentication-related error codes
+            // Accept various authentication-related error codes (BadRequest is also valid for missing headers)
             Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
                          response.StatusCode == HttpStatusCode.Forbidden ||
+                         response.StatusCode == HttpStatusCode.BadRequest ||
                          response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected authentication failure but got {response.StatusCode}");
+                         $"Expected authentication/validation failure but got {response.StatusCode}");
         }
 
         /// <summary>
@@ -301,11 +326,11 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/{mockStatementHandle}/cancel", content);
             
-            // This endpoint expects either success, BadRequest, or InternalServerError
+            // This endpoint should return success, BadRequest, or UnprocessableEntity for mock/invalid handles
             Assert.IsTrue(response.IsSuccessStatusCode || 
                          response.StatusCode == HttpStatusCode.BadRequest ||
-                         response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected success, BadRequest, or InternalServerError but got {response.StatusCode}");
+                         response.StatusCode == (HttpStatusCode)422, // UnprocessableEntity
+                         $"Expected success, BadRequest, or UnprocessableEntity but got {response.StatusCode}");
         }
 
         /// <summary>
@@ -322,11 +347,12 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/{mockStatementHandle}/cancel", content);
             
-            // Accept various authentication-related error codes
+            // Accept various authentication-related error codes (BadRequest is also valid for missing headers)
             Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
                          response.StatusCode == HttpStatusCode.Forbidden ||
+                         response.StatusCode == HttpStatusCode.BadRequest ||
                          response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected authentication failure but got {response.StatusCode}");
+                         $"Expected authentication/validation failure but got {response.StatusCode}");
         }
 
         /// <summary>

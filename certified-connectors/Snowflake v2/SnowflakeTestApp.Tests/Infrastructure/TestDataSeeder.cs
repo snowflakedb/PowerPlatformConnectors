@@ -25,10 +25,14 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <summary>
         /// Creates test table if it doesn't exist and seeds it with sample data
         /// </summary>
-        /// <param name="tableName">Name of the table to create/seed</param>
-        /// <param name="dataset">Dataset name (default: "default")</param>
-        public async Task<bool> EnsureTestTableExistsAndSeed(string tableName = TestData.DefaultTable, string dataset = TestData.DefaultDataset)
+        /// <param name="tableName">Name of the table to create/seed (defaults to TestData.DefaultTable)</param>
+        /// <param name="dataset">Dataset name (defaults to TestData.DefaultDataset)</param>
+        public async Task<bool> EnsureTestTableExistsAndSeed(string tableName = null, string dataset = null)
         {
+            // Handle default values inside the method
+            tableName = tableName ?? TestData.DefaultTable;
+            dataset = dataset ?? TestData.DefaultDataset;
+
             try
             {
                 // First, try to create the table if it doesn't exist
@@ -143,8 +147,12 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <summary>
         /// Cleans up test data by truncating the test table
         /// </summary>
-        public async Task<bool> CleanupTestTable(string tableName = TestData.DefaultTable)
+        /// <param name="tableName">Name of the table to cleanup (defaults to TestData.DefaultTable)</param>
+        public async Task<bool> CleanupTestTable(string tableName = null)
         {
+            // Handle default value inside the method
+            tableName = tableName ?? TestData.DefaultTable;
+
             try
             {
                 var truncateSql = $"TRUNCATE TABLE IF EXISTS {tableName}";
@@ -161,8 +169,12 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <summary>
         /// Drops the test table completely
         /// </summary>
-        public async Task<bool> DropTestTable(string tableName = TestData.DefaultTable)
+        /// <param name="tableName">Name of the table to drop (defaults to TestData.DefaultTable)</param>
+        public async Task<bool> DropTestTable(string tableName = null)
         {
+            // Handle default value inside the method
+            tableName = tableName ?? TestData.DefaultTable;
+
             try
             {
                 var dropSql = $"DROP TABLE IF EXISTS {tableName}";
