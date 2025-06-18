@@ -233,3 +233,78 @@ curl -X POST \
 - Use refresh tokens to maintain long-term access without user re-authentication
 - Always use HTTPS for production redirect URIs
 
+## Data Seeding Infrastructure
+
+The test project includes automatic data seeding functionality for tests that need test data:
+
+### Base Classes
+- **`BaseIntegrationTest`**: Basic test functionality without data seeding
+- **`BaseIntegrationTestWithDataSeeding`**: Automatically creates and seeds test tables before running tests
+
+### Test Data Seeding
+Tests that inherit from `BaseIntegrationTestWithDataSeeding` will automatically:
+1. Create a `CUSTOMERS` table if it doesn't exist
+2. Seed it with 10 sample customer records
+3. Make the seeded data available for testing
+
+### Sample Seeded Data Structure
+```sql
+CREATE TABLE CUSTOMERS (
+    ID NUMBER AUTOINCREMENT PRIMARY KEY,
+    NAME VARCHAR(255) NOT NULL,
+    EMAIL VARCHAR(255),
+    PHONE VARCHAR(50),
+    CREATED_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    IS_ACTIVE BOOLEAN DEFAULT TRUE,
+    BALANCE NUMBER(10,2) DEFAULT 0.00
+)
+```
+
+Sample records include customers like:
+- John Doe (john.doe@example.com, $1,500.50)
+- Jane Smith (jane.smith@example.com, $2,750.00)
+- Bob Johnson (bob.johnson@example.com, $890.25)
+- And 7 more test customers...
+
+### Using Data Seeding in Tests
+```csharp
+[TestClass]
+public class MyDataTest : BaseIntegrationTestWithDataSeeding
+{
+    [TestMethod]
+    public async Task MyTest()
+    {
+        RequireTestData(); // Ensures test data is available
+        
+        // Your test code here - can use the seeded CUSTOMERS table
+        var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('default')/tables('CUSTOMERS')/items");
+        // ... test assertions
+    }
+}
+```
+
+### Customizing Test Tables
+Override the `TestTables` property to specify different tables:
+```csharp
+protected override string[] TestTables => new[] { "PRODUCTS", "ORDERS" };
+```
+
+### Development Guidelines
+
+#### Test Categories
+- **Connection Tests**: Verify connection and authentication
+- **Data Tests**: Test CRUD operations on tables and datasets (with seeded data)
+- **Metadata Tests**: Test schema and metadata retrieval
+- **SQL Tests**: Test direct SQL execution (with seeded data)
+- **Trigger Tests**: Test webhook and trigger functionality
+
+#### Adding New Tests
+1. Create test files in the appropriate category folder
+2. Choose the appropriate base class:
+   - `BaseIntegrationTest` for tests that don't need test data
+   - `BaseIntegrationTestWithDataSeeding` for tests that need seeded tables
+3. Use proper naming conventions (`*IntegrationTest.cs`)
+4. Include comprehensive documentation
+5. Handle authentication and error scenarios
+6. Use `RequireTestData()` in tests that depend on seeded data
+
