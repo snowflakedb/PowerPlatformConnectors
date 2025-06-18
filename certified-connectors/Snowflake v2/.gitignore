@@ -5,6 +5,7 @@
 !/.gitignore
 !/SnowflakeV2CoreLogic/
 !/SnowflakeTestApp/
+!/SnowflakeTestApp.Tests/
 !/ConnectorArtifacts/
 
 # .config folder is not ignored
