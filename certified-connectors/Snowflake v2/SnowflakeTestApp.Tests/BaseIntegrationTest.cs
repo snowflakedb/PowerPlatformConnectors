@@ -14,11 +14,6 @@ namespace SnowflakeTestApp.Tests
         protected string BaseUrl => TestConfiguration.BaseUrl;
         protected HttpClient HttpClient;
 
-        private class TestSecrets
-        {
-            public string BearerToken { get; set; }
-        }
-
         [TestInitialize]
         public virtual void TestInitialize()
         {
@@ -35,54 +30,11 @@ namespace SnowflakeTestApp.Tests
         }
 
         /// <summary>
-        /// Gets the test token from the secrets file, looking in the correct location
+        /// Gets the test token from TestConfiguration
         /// </summary>
         protected string GetTestToken()
         {
-            // Try multiple possible locations for the test secrets file
-            var possiblePaths = new[]
-            {
-                Path.Combine(TestContext.TestDir, "..", "..", "..", "test-secrets.json"), // From bin/Debug/net48 back to project root
-                Path.Combine(Directory.GetCurrentDirectory(), "test-secrets.json"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-secrets.json"),
-                "test-secrets.json"
-            };
-
-            string secretsPath = null;
-            foreach (var path in possiblePaths)
-            {
-                var fullPath = Path.GetFullPath(path);
-                if (File.Exists(fullPath))
-                {
-                    secretsPath = fullPath;
-                    break;
-                }
-            }
-
-            if (secretsPath == null)
-            {
-                // Create a more helpful error message with all attempted paths
-                var attemptedPaths = "";
-                for (int i = 0; i < possiblePaths.Length; i++)
-                {
-                    attemptedPaths += $"\n  {i + 1}. {Path.GetFullPath(possiblePaths[i])}";
-                }
-                
-                Assert.Inconclusive($"Test secrets file not found. Attempted paths:{attemptedPaths}\n\n" +
-                                   "Create a 'test-secrets.json' file in the SnowflakeTestApp.Tests project directory with your bearer token:\n" +
-                                   "{\n  \"BearerToken\": \"your-token-here\"\n}");
-            }
-
-            var secretsJson = File.ReadAllText(secretsPath);
-            var secrets = JsonConvert.DeserializeObject<TestSecrets>(secretsJson);
-            
-            if (string.IsNullOrEmpty(secrets?.BearerToken))
-            {
-                Assert.Inconclusive("BearerToken not found in test-secrets.json file. Please ensure the file contains:\n" +
-                                   "{\n  \"BearerToken\": \"your-token-here\"\n}");
-            }
-
-            return secrets.BearerToken;
+            return TestConfiguration.BearerToken;
         }
 
         /// <summary>

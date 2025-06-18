@@ -77,27 +77,25 @@ Each test file includes both positive (with authentication) and negative (withou
 
 Some integration tests require authentication with a valid bearer token. To set this up:
 
-### 1. Create the Secrets File
+### 1. Update TestConfiguration
 
-Create a file named `test-secrets.json` in the `SnowflakeTestApp.Tests` directory:
+Open the `TestConfiguration.cs` file in the `SnowflakeTestApp.Tests` project and update the `BearerToken` property with your actual OAuth bearer token:
 
-```json
-{
-  "BearerToken": "your-actual-bearer-token-here"
-}
+```csharp
+/// <summary>
+/// Bearer token for test authentication
+/// </summary>
+public static string BearerToken => "your-actual-bearer-token-here";
 ```
-
-### 2. Add Your Bearer Token
 
 Replace `"your-actual-bearer-token-here"` with your actual OAuth bearer token. You can obtain this token by following the "Generating OAuth Tokens" section below.
 
-### 3. Example File Structure
+### 2. Example File Structure
 
 Your test directory should look like this:
 ```
 SnowflakeTestApp.Tests/
-├── test-secrets.json          ← Your secrets file (not committed to git)
-├── test-secrets.json.example  ← Example template
+├── TestConfiguration.cs       ← Contains BearerToken configuration
 ├── BaseIntegrationTest.cs     ← Base class for all integration tests
 ├── DatasetEndpointIntegrationTest.cs
 ├── DataSetsMetadataEndpointIntegrationTest.cs
@@ -110,15 +108,11 @@ SnowflakeTestApp.Tests/
 └── ...
 ```
 
-### 4. Security Notes
+### 3. Security Notes
 
-- The `test-secrets.json` file is automatically ignored by git (added to `.gitignore`)
 - Never commit actual tokens to version control
-- Use the `test-secrets.json.example` file as a template for other developers
-
-### 5. Running Tests Without Secrets
-
-If the `test-secrets.json` file is missing or doesn't contain a valid token, tests that require authentication will be marked as "Inconclusive" rather than failing, with a helpful message explaining how to set up the secrets file.
+- Consider using environment variables or user secrets for production scenarios
+- The bearer token is stored directly in the TestConfiguration class for simplicity during development
 
 ## Troubleshooting
 

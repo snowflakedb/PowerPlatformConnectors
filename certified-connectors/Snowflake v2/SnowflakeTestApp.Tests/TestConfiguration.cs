@@ -16,5 +16,10 @@ namespace SnowflakeTestApp.Tests
         /// Default timeout in seconds for HTTP requests during tests
         /// </summary>
         public static int DefaultTimeoutSeconds => 30;
+
+        /// <summary>
+        /// Bearer token for test authentication
+        /// </summary>
+        public static string BearerToken => "your-token-here";
     }
 } 
