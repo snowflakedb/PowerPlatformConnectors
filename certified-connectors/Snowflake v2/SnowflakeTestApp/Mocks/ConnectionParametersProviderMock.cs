@@ -113,12 +113,6 @@ namespace SnowflakeTestApp.Mocks
                 authToken = authToken.Substring("Bearer ".Length).Trim();
             }
 
-            // If no token in header, fall back to the configured test token
-            if (string.IsNullOrEmpty(authToken))
-            {
-                authToken = TestBearerToken;
-            }
-
             return new TokenMock(authToken);
         }
 
