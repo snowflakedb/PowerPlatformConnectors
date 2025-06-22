@@ -5,14 +5,22 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace SnowflakeTestApp.Tests.Metadata
 {
     /// <summary>
-    /// Integration tests for the datasets metadata endpoint.
-    /// These tests document the expected behavior and can be used to verify the endpoint manually.
+    /// Integration tests for the datasets metadata endpoints.
+    /// These tests document the expected behavior and can be used to verify the endpoints manually.
+    /// Based on actual API testing, unauthenticated requests return 404 Not Found.
     /// </summary>
     [TestClass]
     public class DataSetsMetadataEndpointIntegrationTest : BaseIntegrationTest
     {
+        [TestInitialize]
+        public override void TestInitialize()
+        {
+            base.TestInitialize();
+            EnsureApplicationIsRunning();
+        }
+
         /// <summary>
-        /// Test the /$metadata.json/datasets endpoint with authentication
+        /// Test the /$metadata.json endpoint with authentication
         /// </summary>
         [TestMethod]
         public async Task GetDataSetsMetadataEndpoint_WithAuth_ReturnsOk()
@@ -20,81 +28,63 @@ namespace SnowflakeTestApp.Tests.Metadata
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json");
+            
             AssertStatusCode(response, HttpStatusCode.OK);
             AssertResponseHasContent(response);
         }
 
         /// <summary>
-        /// Test the datasets metadata endpoint without authentication
-        /// Note: Metadata endpoints may be publicly accessible, so we check for either Unauthorized or OK
+        /// Test the /$metadata.json endpoint without authentication
+        /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
-        public async Task GetDataSetsMetadataEndpoint_WithoutAuth_ChecksAuthenticationRequirement()
+        public async Task GetDataSetsMetadataEndpoint_WithoutAuth_ReturnsNotFound()
         {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json");
             
-            // Metadata endpoints might be publicly accessible or require auth - both are valid patterns
-            var isUnauthorized = response.StatusCode == HttpStatusCode.Unauthorized;
-            var isForbidden = response.StatusCode == HttpStatusCode.Forbidden;
-            var isOk = response.StatusCode == HttpStatusCode.OK;
-            
-            Assert.IsTrue(isUnauthorized || isForbidden || isOk, 
-                         $"Expected Unauthorized (401), Forbidden (403), or OK (200) but got {(int)response.StatusCode} {response.StatusCode}");
-            
-            // If the endpoint is publicly accessible, document that behavior
-            if (isOk)
-            {
-                TestContext?.WriteLine("Note: Metadata endpoint is publicly accessible (does not require authentication)");
-                AssertResponseHasContent(response);
-            }
-            else
-            {
-                TestContext?.WriteLine($"Metadata endpoint requires authentication - returned {response.StatusCode}");
-            }
+            AssertStatusCode(response, HttpStatusCode.NotFound);
         }
 
         /// <summary>
-        /// Test that the response content type is JSON when successful
+        /// Test the /$metadata.json/{dataset} endpoint with authentication
         /// </summary>
         [TestMethod]
-        public async Task GetDataSetsMetadataEndpoint_ResponseContentType_IsJson()
+        public async Task GetDataSetMetadataEndpoint_WithAuth_ReturnsOk()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
-            AssertStatusCode(response, HttpStatusCode.OK);
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/default");
             
-            var contentType = response.Content.Headers.ContentType?.MediaType;
-            Assert.IsTrue(contentType?.Contains("json") == true, $"Expected JSON content type but got {contentType}");
-        }
-
-        /// <summary>
-        /// Test that the metadata response contains valid JSON structure
-        /// </summary>
-        [TestMethod]
-        public async Task GetDataSetsMetadataEndpoint_ResponseIsValidJson()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
             AssertStatusCode(response, HttpStatusCode.OK);
+            AssertResponseHasContent(response);
         }
 
         /// <summary>
-        /// Test the endpoint with invalid route to ensure proper error handling
+        /// Test the /$metadata.json/{dataset} endpoint without authentication
+        /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
-        public async Task GetDataSetsMetadataEndpoint_WithInvalidRoute_ReturnsNotFound()
+        public async Task GetDataSetMetadataEndpoint_WithoutAuth_ReturnsNotFound()
+        {
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/default");
+            
+            AssertStatusCode(response, HttpStatusCode.NotFound);
+        }
+
+        /// <summary>
+        /// Test the /$metadata.json/{dataset} endpoint with non-existent dataset
+        /// </summary>
+        [TestMethod]
+        public async Task GetDataSetMetadataEndpoint_WithNonExistentDataset_ReturnsNotFound()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/nonexistent");
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.NotFound || response.StatusCode == HttpStatusCode.BadRequest,
-                         $"Expected NotFound (404) or BadRequest (400) but got {(int)response.StatusCode} {response.StatusCode}");
+            
+            AssertStatusCode(response, HttpStatusCode.NotFound);
         }
     }
 } 

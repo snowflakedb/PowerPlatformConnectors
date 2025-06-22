@@ -3,16 +3,90 @@ using System.IO;
 using System.Net.Http;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using SnowflakeTestApp.Tests.Infrastructure;
+using System.Threading.Tasks;
 
 namespace SnowflakeTestApp.Tests
 {
     /// <summary>
     /// Base class for integration tests that provides common functionality
+    /// Data is seeded once before all tests run
     /// </summary>
     public abstract class BaseIntegrationTest
     {
         protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
+        private static TestDataSeeder DataSeeder;
+
+        /// <summary>
+        /// Initializes test data once before all tests in the assembly run
+        /// </summary>
+        [AssemblyInitialize]
+        public static void AssemblyInitialize(TestContext context)
+        {
+            try
+            {
+                // Initialize HTTP client for data seeding
+                using (var httpClient = new HttpClient
+                {
+                    Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
+                })
+                {
+                    // Get test token for data seeding
+                    var token = TestData.DefaultBearerToken;
+                    
+                    // Check if the token is configured
+                    if (!string.IsNullOrEmpty(token) && 
+                        !token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) &&
+                        !token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
+                    {
+                        DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
+                        
+                        // Seed test data for the default table
+                        var success = DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset).GetAwaiter().GetResult();
+                        
+                        if (!success)
+                        {
+                            throw new InvalidOperationException($"Failed to setup test table '{TestData.DefaultTable}'");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Test data seeding failed: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Cleans up test data after all tests in the assembly complete
+        /// </summary>
+        [AssemblyCleanup]
+        public static void AssemblyCleanup()
+        {
+            try
+            {
+                if (DataSeeder != null)
+                {
+                    using (var httpClient = new HttpClient
+                    {
+                        Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
+                    })
+                    {
+                        var cleanupSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                        cleanupSeeder.CleanupTestTable(TestData.DefaultTable).GetAwaiter().GetResult();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Ignore cleanup errors
+            }
+        }
 
         [TestInitialize]
         public virtual void TestInitialize()

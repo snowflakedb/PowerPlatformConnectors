@@ -45,9 +45,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             }
             catch (Exception ex)
             {
-                // Log the error but don't fail the test setup
-                Console.WriteLine($"Warning: Could not setup test table '{tableName}': {ex.Message}");
-                return false;
+                throw new InvalidOperationException($"Could not setup test table '{tableName}': {ex.Message}", ex);
             }
         }
 
@@ -161,8 +159,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not cleanup test table '{tableName}': {ex.Message}");
-                return false;
+                throw new InvalidOperationException($"Could not cleanup test table '{tableName}': {ex.Message}", ex);
             }
         }
 
@@ -183,8 +180,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not drop test table '{tableName}': {ex.Message}");
-                return false;
+                throw new InvalidOperationException($"Could not drop test table '{tableName}': {ex.Message}", ex);
             }
         }
     }

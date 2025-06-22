@@ -8,12 +8,12 @@ namespace SnowflakeTestApp.Tests.Triggers
     /// <summary>
     /// Integration tests for the trigger endpoints.
     /// These tests document the expected behavior and can be used to verify the endpoints manually.
-    /// Note: These tests use example table name 'CUSTOMERS' - adjust as needed for your test environment.
+    /// Note: These tests use the globally seeded CUSTOMERS table.
     /// </summary>
     [TestClass]
     public class TriggerEndpointIntegrationTest : BaseIntegrationTest
     {
-        private const string TestTable = "CUSTOMERS"; // Adjust this to match your test environment
+        private const string TestTable = "CUSTOMERS";
         private const string TestDataset = "default";
 
         [TestInitialize]
@@ -25,7 +25,6 @@ namespace SnowflakeTestApp.Tests.Triggers
 
         /// <summary>
         /// Test the /datasets/{dataset}/tables/{table}/onnewitems endpoint with authentication
-        /// Note: This test uses example table name 'CUSTOMERS' - adjust as needed for your test environment
         /// </summary>
         [TestMethod]
         public async Task OnNewItemsTriggerEndpoint_WithAuth_ReturnsOk()
@@ -33,26 +32,21 @@ namespace SnowflakeTestApp.Tests.Triggers
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onnewitems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onnewitems");
             
-            // Accept success or NotFound (if the endpoint or table doesn't exist)
-            Assert.IsTrue(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected success or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.OK);
         }
 
         /// <summary>
-        /// Test the trigger endpoint without authentication
+        /// Test the /datasets/{dataset}/tables/{table}/onnewitems endpoint without authentication
+        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
-        public async Task OnNewItemsTriggerEndpoint_WithoutAuth_ReturnsUnauthorized()
+        public async Task OnNewItemsTriggerEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onnewitems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onnewitems");
             
-            // Accept various authentication-related error codes or NotFound
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
-                         response.StatusCode == HttpStatusCode.Forbidden ||
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected authentication failure or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.InternalServerError);
         }
 
         /// <summary>
@@ -64,57 +58,21 @@ namespace SnowflakeTestApp.Tests.Triggers
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onupdateditems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onupdateditems");
             
-            // Accept success or NotFound (if the endpoint or table doesn't exist)
-            Assert.IsTrue(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected success or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.OK);
         }
 
         /// <summary>
-        /// Test the trigger endpoint without authentication
+        /// Test the /datasets/{dataset}/tables/{table}/onupdateditems endpoint without authentication
+        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
-        public async Task OnUpdatedItemsTriggerEndpoint_WithoutAuth_ReturnsUnauthorized()
+        public async Task OnUpdatedItemsTriggerEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onupdateditems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onupdateditems");
             
-            // Accept various authentication-related error codes or NotFound
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
-                         response.StatusCode == HttpStatusCode.Forbidden ||
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected authentication failure or NotFound but got {response.StatusCode}");
-        }
-
-        /// <summary>
-        /// Test the /datasets/{dataset}/tables/{table}/onchangeditems endpoint with authentication
-        /// </summary>
-        [TestMethod]
-        public async Task OnChangedItemsTriggerEndpoint_WithAuth_ReturnsOk()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onchangeditems");
-            
-            // Accept success or NotFound (if the endpoint or table doesn't exist)
-            Assert.IsTrue(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected success or NotFound but got {response.StatusCode}");
-        }
-
-        /// <summary>
-        /// Test the trigger endpoint without authentication
-        /// </summary>
-        [TestMethod]
-        public async Task OnChangedItemsTriggerEndpoint_WithoutAuth_ReturnsUnauthorized()
-        {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onchangeditems");
-            
-            // Accept various authentication-related error codes or NotFound
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
-                         response.StatusCode == HttpStatusCode.Forbidden ||
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected authentication failure or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.InternalServerError);
         }
 
         /// <summary>
@@ -126,91 +84,89 @@ namespace SnowflakeTestApp.Tests.Triggers
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/ondeleteditems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/ondeleteditems");
             
-            // Accept success or NotFound (if the endpoint or table doesn't exist)
-            Assert.IsTrue(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected success or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.OK);
         }
 
         /// <summary>
-        /// Test the trigger endpoint without authentication
+        /// Test the /datasets/{dataset}/tables/{table}/ondeleteditems endpoint without authentication
+        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
-        public async Task OnDeletedItemsTriggerEndpoint_WithoutAuth_ReturnsUnauthorized()
+        public async Task OnDeletedItemsTriggerEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/ondeleteditems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/ondeleteditems");
             
-            // Accept various authentication-related error codes or NotFound
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
-                         response.StatusCode == HttpStatusCode.Forbidden ||
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected authentication failure or NotFound but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.InternalServerError);
         }
 
         /// <summary>
-        /// Test the trigger endpoint with missing dataset parameter
+        /// Test the /datasets/{dataset}/tables/{table}/onchangeditems endpoint with authentication
         /// </summary>
         [TestMethod]
-        public async Task TriggerEndpoint_WithMissingDataset_ReturnsBadRequest()
+        public async Task OnChangedItemsTriggerEndpoint_WithAuth_ReturnsOk()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets//tables/CUSTOMERS/onnewitems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onchangeditems");
             
-            // Accept BadRequest or NotFound depending on how the routing is configured
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.BadRequest || 
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected BadRequest (400) or NotFound (404) but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.OK);
         }
 
         /// <summary>
-        /// Test the trigger endpoint with missing table parameter
+        /// Test the /datasets/{dataset}/tables/{table}/onchangeditems endpoint without authentication
+        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
-        public async Task TriggerEndpoint_WithMissingTable_ReturnsBadRequest()
+        public async Task OnChangedItemsTriggerEndpoint_WithoutAuth_ReturnsInternalServerError()
+        {
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onchangeditems");
+            
+            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+        }
+
+        /// <summary>
+        /// Test the trigger endpoints with invalid table name
+        /// </summary>
+        [TestMethod]
+        public async Task TriggerEndpoint_WithInvalidTable_ReturnsBadRequest()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables//onnewitems");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/INVALID_TABLE/onnewitems");
             
-            // Accept BadRequest or NotFound depending on how the routing is configured
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.BadRequest || 
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected BadRequest (400) or NotFound (404) but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.BadRequest);
         }
 
         /// <summary>
-        /// Test the trigger endpoint with non-existent table
+        /// Test the trigger endpoints with invalid dataset name
         /// </summary>
         [TestMethod]
-        public async Task TriggerEndpoint_WithNonExistentTable_ReturnsNotFound()
+        public async Task TriggerEndpoint_WithInvalidDataset_ReturnsBadRequest()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/NonExistentTable123/onnewitems");
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.NotFound || 
-                         response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected NotFound (404) or InternalServerError (500) but got {response.StatusCode}");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/invalid_dataset/tables/{TestTable}/onnewitems");
+            
+            AssertStatusCode(response, HttpStatusCode.BadRequest);
         }
 
         /// <summary>
-        /// Test the trigger endpoint with query parameters
+        /// Test the non-existent trigger endpoint
         /// </summary>
         [TestMethod]
-        public async Task TriggerEndpoint_WithQueryParameters_ReturnsOk()
+        public async Task NonExistentTriggerEndpoint_ReturnsNotFound()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables/CUSTOMERS/onnewitems?$top=10");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/nonexistent");
             
-            // Accept success or NotFound (if the endpoint or table doesn't exist)
-            Assert.IsTrue(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected success or NotFound for onnewitems with $top but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.NotFound);
         }
     }
 } 

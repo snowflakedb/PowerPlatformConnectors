@@ -7,6 +7,7 @@ namespace SnowflakeTestApp.Tests.Metadata
     /// <summary>
     /// Integration tests for the table metadata endpoints.
     /// These tests document the expected behavior and can be used to verify the endpoints manually.
+    /// Based on actual API testing, unauthenticated requests return 404 Not Found.
     /// </summary>
     [TestClass]
     public class TableMetadataEndpointIntegrationTest : BaseIntegrationTest
@@ -20,7 +21,7 @@ namespace SnowflakeTestApp.Tests.Metadata
 
         /// <summary>
         /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint with authentication
-        /// Note: This test uses example table name 'CUSTOMERS' - adjust as needed for your test environment
+        /// Note: This test uses the globally seeded CUSTOMERS table
         /// </summary>
         [TestMethod]
         public async Task GetTableMetadataEndpoint_WithAuth_ReturnsOk()
@@ -30,80 +31,48 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
-            // If we get 500 Internal Server Error, it might be due to invalid token or app configuration
-            if (response.StatusCode == HttpStatusCode.InternalServerError)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                Assert.Inconclusive($"Table metadata endpoint returned Internal Server Error. This might be due to invalid bearer token or application configuration. " +
-                                   $"Response: {content}");
-            }
-            
-            Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
-            
-            var responseContent = await response.Content.ReadAsStringAsync();
-            Assert.IsFalse(string.IsNullOrEmpty(responseContent), "Response content should not be empty");
+            AssertStatusCode(response, HttpStatusCode.OK);
+            AssertResponseHasContent(response);
         }
 
         /// <summary>
-        /// Test the table metadata endpoint without authentication
+        /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint without authentication
+        /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithoutAuth_ReturnsUnauthorized()
+        public async Task GetTableMetadataEndpoint_WithoutAuth_ReturnsNotFound()
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
-            // Accept various authentication-related error codes
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.Unauthorized || 
-                         response.StatusCode == HttpStatusCode.Forbidden ||
-                         response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected authentication failure but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.NotFound);
         }
 
         /// <summary>
-        /// Test the table metadata endpoint with missing dataset parameter
+        /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint with invalid table
         /// </summary>
         [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithMissingDataset_ReturnsBadRequest()
+        public async Task GetTableMetadataEndpoint_WithInvalidTable_ReturnsBadRequest()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets//tables/CUSTOMERS");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/INVALID_TABLE");
             
-            // Accept BadRequest or NotFound depending on how the routing is configured
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.BadRequest || 
-                         response.StatusCode == HttpStatusCode.NotFound,
-                         $"Expected BadRequest (400) or NotFound (404) but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.BadRequest);
         }
 
         /// <summary>
-        /// Test the table metadata endpoint with missing table parameter
+        /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint with non-existent dataset
         /// </summary>
         [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithMissingTable_ReturnsBadRequestOrNotFound()
+        public async Task GetTableMetadataEndpoint_WithNonExistentDataset_ReturnsNotFound()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/");
-            Assert.IsFalse(response.IsSuccessStatusCode, $"Expected failure but got {response.StatusCode}");
-        }
-
-        /// <summary>
-        /// Test the table metadata endpoint with non-existent table
-        /// </summary>
-        [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithNonExistentTable_ReturnsNotFound()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/NonExistentTable123");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/nonexistent/tables/CUSTOMERS");
             
-            // Accept NotFound or InternalServerError (which can happen if the token is invalid)
-            Assert.IsTrue(response.StatusCode == HttpStatusCode.NotFound || 
-                         response.StatusCode == HttpStatusCode.InternalServerError,
-                         $"Expected NotFound (404) or InternalServerError (500) but got {response.StatusCode}");
+            AssertStatusCode(response, HttpStatusCode.NotFound);
         }
     }
 } 

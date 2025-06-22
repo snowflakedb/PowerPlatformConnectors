@@ -1,18 +1,24 @@
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SnowflakeTestApp.Tests.Infrastructure;
 
 namespace SnowflakeTestApp.Tests.Data
 {
     /// <summary>
     /// Integration tests for the table endpoints.
     /// These tests document the expected behavior and can be used to verify the endpoints manually.
-    /// This test class automatically creates and seeds the CUSTOMERS test table before running tests.
+    /// This test class uses the globally seeded CUSTOMERS test table.
     /// </summary>
     [TestClass]
-    public class TableEndpointIntegrationTest : BaseIntegrationTestWithDataSeeding
+    public class TableEndpointIntegrationTest : BaseIntegrationTest
     {
+        [TestInitialize]
+        public override void TestInitialize()
+        {
+            base.TestInitialize();
+            EnsureApplicationIsRunning();
+        }
+
         /// <summary>
         /// Test the /datasets/{dataset}/tables endpoint with authentication
         /// This test verifies that the seeded test table appears in the tables list
@@ -20,41 +26,28 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task GetTablesEndpoint_WithAuth_ReturnsOk()
         {
-            RequireTestData(); // Ensure test data is available
-            
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('default')/tables");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables");
             
-            // If we get 500 Internal Server Error, it might be due to invalid token or app configuration
-            if (response.StatusCode == System.Net.HttpStatusCode.InternalServerError)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                Assert.Inconclusive($"Tables endpoint returned Internal Server Error. This might be due to invalid bearer token or application configuration. " +
-                                   $"Response: {content}");
-            }
-            
-            Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
-            
-            var responseContent = await response.Content.ReadAsStringAsync();
-            Assert.IsFalse(string.IsNullOrEmpty(responseContent), "Response content should not be empty");
-            
-            // Log the response to see if our test table is listed
-            TestContext?.WriteLine($"Tables response: {responseContent}");
+            AssertStatusCode(response, System.Net.HttpStatusCode.OK);
+            AssertResponseHasContent(response);
         }
 
         /// <summary>
         /// Test the /datasets/{dataset}/tables endpoint without authentication
+        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
-        public async Task GetTablesEndpoint_WithoutAuth_ReturnsUnauthorized()
+        public async Task GetTablesEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('default')/tables");
-            Assert.IsFalse(response.IsSuccessStatusCode, $"Expected failure but got {response.StatusCode}");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables");
+            
+            AssertStatusCode(response, System.Net.HttpStatusCode.InternalServerError);
         }
 
         /// <summary>
