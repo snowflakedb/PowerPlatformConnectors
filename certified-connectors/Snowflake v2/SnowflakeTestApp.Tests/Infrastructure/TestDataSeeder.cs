@@ -11,7 +11,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
     /// <summary>
     /// Handles creation and seeding of test tables with sample data
     /// </summary>
-    public class TestDataSeeder
+    public class TestDataSeeder : IDisposable
     {
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
@@ -287,6 +287,14 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         {
             [JsonProperty("data")]
             public object[][] Data { get; set; }
+        }
+
+        /// <summary>
+        /// Disposes the HttpClient used by this TestDataSeeder
+        /// </summary>
+        public void Dispose()
+        {
+            _httpClient?.Dispose();
         }
     }
 } 

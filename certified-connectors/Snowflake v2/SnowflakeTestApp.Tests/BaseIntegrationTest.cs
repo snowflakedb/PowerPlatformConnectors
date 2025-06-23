@@ -35,34 +35,33 @@ namespace SnowflakeTestApp.Tests
         {
             try
             {
-                // Initialize HTTP client for data seeding
-                using (var httpClient = new HttpClient
+                // Get test token for data seeding
+                var token = TestData.DefaultBearerToken;
+                
+                // Check if the token is configured
+                if (!string.IsNullOrEmpty(token) && 
+                    !token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) &&
+                    !token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
                 {
-                    Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
-                })
-                {
-                    // Get test token for data seeding
-                    var token = TestData.DefaultBearerToken;
+                    // Initialize HTTP client for data seeding - don't dispose it as DataSeeder will use it
+                    var httpClient = new HttpClient
+                    {
+                        Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
+                    };
                     
-                    // Check if the token is configured
-                    if (!string.IsNullOrEmpty(token) && 
-                        !token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) &&
-                        !token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
+                    DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
+                    
+                    // Seed test data for the default table
+                    var success = DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset).GetAwaiter().GetResult();
+                    
+                    if (!success)
                     {
-                        DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
-                        
-                        // Seed test data for the default table
-                        var success = DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset).GetAwaiter().GetResult();
-                        
-                        if (!success)
-                        {
-                            throw new InvalidOperationException($"Failed to setup test table '{TestData.DefaultTable}'");
-                        }
+                        throw new InvalidOperationException($"Failed to setup test table '{TestData.DefaultTable}'");
                     }
-                    else
-                    {
-                        throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
-                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
                 }
             }
             catch (Exception ex)
@@ -81,14 +80,8 @@ namespace SnowflakeTestApp.Tests
             {
                 if (DataSeeder != null)
                 {
-                    using (var httpClient = new HttpClient
-                    {
-                        Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
-                    })
-                    {
-                        var cleanupSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
-                        cleanupSeeder.CleanupTestTable(TestData.DefaultTable).GetAwaiter().GetResult();
-                    }
+                    DataSeeder.CleanupTestTable(TestData.DefaultTable).GetAwaiter().GetResult();
+                    DataSeeder.Dispose(); // Dispose the DataSeeder and its HttpClient
                 }
             }
             catch (Exception)
@@ -189,12 +182,12 @@ namespace SnowflakeTestApp.Tests
         /// <returns>List of TestDataRecord objects from the database</returns>
         protected async Task<List<TestDataRecord>> FetchActualDataFromDatabase(string tableName = null)
         {
-            if (DataSeeder == null)
+            // Create a fresh HttpClient for this operation to avoid disposal issues
+            using (var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds) })
             {
-                throw new InvalidOperationException("DataSeeder not initialized. Make sure AssemblyInitialize ran successfully.");
+                var tempSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                return await tempSeeder.FetchTestDataFromDatabase(tableName);
             }
-
-            return await DataSeeder.FetchTestDataFromDatabase(tableName);
         }
 
         /// <summary>
@@ -205,12 +198,12 @@ namespace SnowflakeTestApp.Tests
         /// <returns>TestDataRecord if found, null otherwise</returns>
         protected async Task<TestDataRecord> FetchActualRecordById(int id, string tableName = null)
         {
-            if (DataSeeder == null)
+            // Create a fresh HttpClient for this operation to avoid disposal issues
+            using (var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds) })
             {
-                throw new InvalidOperationException("DataSeeder not initialized. Make sure AssemblyInitialize ran successfully.");
+                var tempSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                return await tempSeeder.FetchTestRecordById(id, tableName);
             }
-
-            return await DataSeeder.FetchTestRecordById(id, tableName);
         }
 
         /// <summary>

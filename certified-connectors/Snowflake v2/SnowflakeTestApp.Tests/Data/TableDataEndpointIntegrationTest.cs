@@ -31,7 +31,7 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the GET /datasets/{dataset}/tables/{table}/items endpoint with authentication
-        /// This test uses the automatically seeded test data
+        /// This test uses the automatically seeded test data and validates against TestDataRecord objects
         /// </summary>
         [TestMethod]
         public async Task GetItemsEndpoint_WithAuth_ReturnsOk()
@@ -45,6 +45,32 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+
+            // Deserialize the OData response
+            var customers = JsonConvert.DeserializeObject<ODataResponse<CustomerItem>>(content).Value;
+            
+            // Convert API response items to TestDataRecord for comparison
+            var actualRecords = customers.Select(item => item.ToTestDataRecord()).ToList();
+
+            // Validate against seeded data
+            Assert.AreEqual(SeededTestData.Count, actualRecords.Count, 
+                "API should return the same number of records as seeded data");
+
+            // Validate each record matches seeded data
+            foreach (var expectedRecord in SeededTestData)
+            {
+                var actualRecord = actualRecords.FirstOrDefault(r => r.Id == expectedRecord.Id);
+                ValidateRecordMatches(expectedRecord, actualRecord, $"API record with ID {expectedRecord.Id}");
+            }
+
+            // Get the first inactive record from seeded data for validation
+            var expectedInactiveRecord = SeededTestData.FirstOrDefault(r => !r.IsActive);
+            Assert.IsNotNull(expectedInactiveRecord, "Should have at least one inactive record in seeded data");
+            
+            var actualInactiveRecord = actualRecords.FirstOrDefault(r => r.Id == expectedInactiveRecord.Id);
+            Assert.IsNotNull(actualInactiveRecord, $"{expectedInactiveRecord.Name} record should exist in API response");
+            Assert.IsFalse(actualInactiveRecord.IsActive, $"{expectedInactiveRecord.Name} should be inactive");
+            Assert.AreEqual(expectedInactiveRecord.Balance, actualInactiveRecord.Balance, $"{expectedInactiveRecord.Name} should have correct balance");
         }
 
         /// <summary>
@@ -61,22 +87,48 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
-        /// <summary>
+                /// <summary>
         /// Test the GET /datasets/{dataset}/tables/{table}/items/{id} endpoint with authentication
-        /// This test uses ID=1 which should exist in our seeded data
+        /// This test uses the first active record from seeded data and validates the response
         /// </summary>
         [TestMethod]
         public async Task GetItemEndpoint_WithAuth_ReturnsOk()
         {
+            // Get the first active record from seeded data to test with
+            var expectedRecord = SeededTestData.FirstOrDefault(r => r.IsActive);
+            Assert.IsNotNull(expectedRecord, "Should have at least one active record in seeded data");
+
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{expectedRecord.Id}')");
             
             Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+
+            // Deserialize the single item response
+            var customerItem = JsonConvert.DeserializeObject<CustomerItem>(content);
+            Assert.IsNotNull(customerItem, "Customer item should not be null");
+
+            // Convert to TestDataRecord for validation
+            var actualRecord = customerItem.ToTestDataRecord();
+
+            // Validate the record matches seeded data
+            ValidateRecordMatches(expectedRecord, actualRecord, "Single item API response");
+
+            // Additional validations using seeded data values
+            Assert.AreEqual(expectedRecord.Name, actualRecord.Name, $"Should be {expectedRecord.Name} record");
+            Assert.AreEqual(expectedRecord.Email, actualRecord.Email, "Should have correct email from seeded data");
+            Assert.AreEqual(expectedRecord.Phone, actualRecord.Phone, "Should have correct phone from seeded data");
+            Assert.AreEqual(expectedRecord.IsActive, actualRecord.IsActive, "Active status should match seeded data");
+            Assert.AreEqual(expectedRecord.Balance, actualRecord.Balance, "Should have correct balance from seeded data");
+
+            // Validate additional fields from API response
+            Assert.IsNotNull(customerItem.ItemInternalId, "ItemInternalId should be present");
+            Assert.IsNotNull(customerItem.CREATED_DATE, "CREATED_DATE should be present");
+            Assert.IsTrue(Guid.TryParse(customerItem.ItemInternalId, out _), "ItemInternalId should be a valid GUID");
         }
 
         /// <summary>
@@ -86,39 +138,49 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task GetItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
+            // Use the second record from seeded data for this test
+            var testRecord = SeededTestData.Skip(1).FirstOrDefault();
+            Assert.IsNotNull(testRecord, "Should have at least 2 records in seeded data");
+
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)");
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')");
             
             Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
         /// Test the POST /datasets/{dataset}/tables/{table}/items endpoint with authentication
-        /// This test creates a new item in the seeded test table
+        /// This test creates a new item based on a template from seeded data
         /// </summary>
         [TestMethod]
         public async Task CreateItemEndpoint_WithAuth_ReturnsCreated()
         {
+            // Use the highest balance record as a template for creating a new record
+            var templateRecord = SeededTestData.OrderByDescending(r => r.Balance).FirstOrDefault();
+            Assert.IsNotNull(templateRecord, "Should have seeded data to use as template");
+
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var newItem = new
-            {
-                NAME = "Test Customer",
-                EMAIL = "test@example.com",
-                PHONE = "+1-555-0199",
-                IS_ACTIVE = true,
-                BALANCE = 100.00
-            };
+            // Create new record with dynamic values based on template
+            var newId = SeededTestData.Max(r => r.Id) + 50;
+            var newItem = new TestDataRecord(
+                newId, 
+                $"New {templateRecord.Name}", 
+                templateRecord.Email.Replace("@", "+create@"), 
+                templateRecord.Phone.Replace("555", "777"), 
+                templateRecord.IsActive, 
+                templateRecord.Balance * 0.8m
+            );
 
-            var json = JsonConvert.SerializeObject(newItem);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", content);
+            var response = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", 
+                CreateJsonContent(newItem));
+            var xd = await response.Content.ReadAsStringAsync();
             
-            Assert.AreEqual(System.Net.HttpStatusCode.Created, response.StatusCode);
+            Assert.AreEqual(System.Net.HttpStatusCode.Created, response.StatusCode, 
+                $"Should successfully create record based on template: {templateRecord.Name}");
         }
 
         /// <summary>
@@ -141,29 +203,33 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the PUT /datasets/{dataset}/tables/{table}/items({id}) endpoint with authentication
-        /// This test updates an existing item in the seeded test table
+        /// This test updates an existing item using data from the third seeded record
         /// </summary>
         [TestMethod]
         public async Task UpdateItemEndpoint_WithAuth_ReturnsOk()
         {
+            // Use the third record from seeded data for this update test
+            var recordToUpdate = SeededTestData.Skip(2).FirstOrDefault();
+            Assert.IsNotNull(recordToUpdate, "Should have at least 3 records in seeded data");
+
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             var updatedItem = new
             {
-                ID = 1,
-                NAME = "Updated Customer",
-                EMAIL = "updated@example.com",
-                PHONE = "+1-555-0199",
-                IS_ACTIVE = true,
-                BALANCE = 200.00
+                ID = recordToUpdate.Id,
+                NAME = $"Updated {recordToUpdate.Name}",
+                EMAIL = recordToUpdate.Email.Replace("@", "+updated@"),
+                PHONE = recordToUpdate.Phone,
+                IS_ACTIVE = !recordToUpdate.IsActive, // Flip the active status
+                BALANCE = recordToUpdate.Balance + 500.00m // Add 500 to original balance
             };
 
             var json = JsonConvert.SerializeObject(updatedItem);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)", content);
+            var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{recordToUpdate.Id}')", content);
             
             Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
         }
@@ -175,27 +241,35 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task UpdateItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var updateData = new { NAME = "Updated Customer" };
+            // Use the last record from seeded data for this test
+            var testRecord = SeededTestData.LastOrDefault();
+            Assert.IsNotNull(testRecord, "Should have seeded data available");
+
+            var updateData = new { NAME = $"Updated {testRecord.Name}" };
             var json = JsonConvert.SerializeObject(updateData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)", content);
+            var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')", content);
             
             Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
         /// Test the DELETE /datasets/{dataset}/tables/{table}/items({id}) endpoint with authentication
-        /// This test deletes an item from the seeded test table
+        /// This test deletes the lowest balance record from the seeded test table
         /// </summary>
         [TestMethod]
         public async Task DeleteItemEndpoint_WithAuth_ReturnsOk()
         {
+            // Use the record with the lowest balance for deletion test
+            var recordToDelete = SeededTestData.OrderBy(r => r.Balance).FirstOrDefault();
+            Assert.IsNotNull(recordToDelete, "Should have seeded data with balance information");
+
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)");
+            var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{recordToDelete.Id}')");
             
             Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
         }
@@ -207,7 +281,11 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task DeleteItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)");
+            // Use a middle record from seeded data for this test (to diversify from other tests)
+            var testRecord = SeededTestData.Skip(SeededTestData.Count / 2).FirstOrDefault();
+            Assert.IsNotNull(testRecord, "Should have seeded data available");
+
+            var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')");
             
             Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
@@ -238,227 +316,218 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode, "Expected HTTP 400 Bad Request");
         }
 
+
+
         /// <summary>
-        /// Example test demonstrating how to validate against seeded test data using TestDataRecord
-        /// This makes assertions much easier and more reliable
+        /// Test OData filtering functionality by validating active records count
         /// </summary>
         [TestMethod]
-        public async Task GetItemEndpoint_ValidateAgainstSeededData()
+        public async Task GetItemsEndpoint_FilterActiveRecords_ReturnsCorrectCount()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // Get the expected record from our seeded data
-            var expectedRecord = SeededTestData.FirstOrDefault(r => r.Id == 1);
-            Assert.IsNotNull(expectedRecord, "Expected test record with ID=1 should exist in seeded data");
-
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
-
-            var content = await response.Content.ReadAsStringAsync();
-            var actualData = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
-
-            // Now we can easily validate against our known test data structure
-            Assert.AreEqual(expectedRecord.Id, Convert.ToInt32(actualData["ID"]));
-            Assert.AreEqual(expectedRecord.Name, actualData["NAME"].ToString());
-            Assert.AreEqual(expectedRecord.Email, actualData["EMAIL"].ToString());
-            Assert.AreEqual(expectedRecord.Phone, actualData["PHONE"].ToString());
-            Assert.AreEqual(expectedRecord.IsActive, Convert.ToBoolean(actualData["IS_ACTIVE"]));
-            Assert.AreEqual(expectedRecord.Balance, Convert.ToDecimal(actualData["BALANCE"]));
-        }
-
-        /// <summary>
-        /// Example test showing how to validate count and filtering using the test data model
-        /// </summary>
-        [TestMethod]
-        public async Task GetItemsEndpoint_ValidateActiveRecordsCount()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // We know exactly how many active records we should have
             var expectedActiveCount = SeededTestData.Count(r => r.IsActive);
+            var expectedInactiveCount = SeededTestData.Count(r => !r.IsActive);
             
-            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq true");
+            // Test active records filter
+            var activeResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq true");
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, activeResponse.StatusCode, "Active filter should succeed");
             
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
-                
-                // This is just an example - actual response structure may vary
-                if (data?.ContainsKey("value") == true && data["value"] is Newtonsoft.Json.Linq.JArray valueArray)
-                {
-                    int actualCount = valueArray.Count;
-                    Assert.AreEqual(expectedActiveCount, actualCount, 
-                        $"Expected {expectedActiveCount} active records but found {actualCount}");
-                }
-            }
+            var activeContent = await activeResponse.Content.ReadAsStringAsync();
+            var activeData = JsonConvert.DeserializeObject<ODataResponse<CustomerItem>>(activeContent);
+            Assert.IsNotNull(activeData?.Value, "Active filter response should contain data");
+            Assert.AreEqual(expectedActiveCount, activeData.Value.Count, $"Should return {expectedActiveCount} active records");
+            
+            // Validate all returned records are actually active
+            Assert.IsTrue(activeData.Value.All(item => item.IS_ACTIVE.Equals("true", StringComparison.OrdinalIgnoreCase)), 
+                "All filtered records should be active");
+
+            // Test inactive records filter
+            var inactiveResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq false");
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, inactiveResponse.StatusCode, "Inactive filter should succeed");
+            
+            var inactiveContent = await inactiveResponse.Content.ReadAsStringAsync();
+            var inactiveData = JsonConvert.DeserializeObject<ODataResponse<CustomerItem>>(inactiveContent);
+            Assert.IsNotNull(inactiveData?.Value, "Inactive filter response should contain data");
+            Assert.AreEqual(expectedInactiveCount, inactiveData.Value.Count, $"Should return {expectedInactiveCount} inactive records");
+            
+            // Validate all returned records are actually inactive
+            Assert.IsTrue(inactiveData.Value.All(item => item.IS_ACTIVE.Equals("false", StringComparison.OrdinalIgnoreCase)), 
+                "All filtered records should be inactive");
         }
 
         /// <summary>
-        /// Example helper method showing how to validate that a created item matches our test data pattern
-        /// </summary>
-        private void ValidateTestDataStructure(Dictionary<string, object> actualData, TestDataRecord expected)
-        {
-            Assert.AreEqual(expected.Id, Convert.ToInt32(actualData["ID"]), "ID should match");
-            Assert.AreEqual(expected.Name, actualData["NAME"].ToString(), "Name should match");
-            Assert.AreEqual(expected.Email, actualData["EMAIL"].ToString(), "Email should match");
-            Assert.AreEqual(expected.Phone, actualData["PHONE"].ToString(), "Phone should match");
-            Assert.AreEqual(expected.IsActive, Convert.ToBoolean(actualData["IS_ACTIVE"]), "IsActive should match");
-            Assert.AreEqual(expected.Balance, Convert.ToDecimal(actualData["BALANCE"]), "Balance should match");
-        }
-
-        /// <summary>
-        /// Comprehensive test that validates the entire seeded dataset against actual database content
-        /// This demonstrates how to use the new TestDataRecord mapping functionality
+        /// Comprehensive integration test that validates database integrity by comparing seeded vs actual data
         /// </summary>
         [TestMethod]
-        public async Task ValidateSeededDataIntegrity_FullDatasetComparison()
+        public async Task DatabaseIntegrity_ValidateSeededDataConsistency()
         {
-            // Fetch the actual data from Snowflake and map it to TestDataRecord objects
+            // Fetch actual data from database and compare with seeded data
             var actualDataFromDb = await FetchActualDataFromDatabase();
             
-            // Validate that what we seeded matches what's actually in the database
-            ValidateDataMatches(SeededTestData, actualDataFromDb, "Seeded data should match database content exactly");
+            // Core integrity validations
+            Assert.AreEqual(SeededTestData.Count, actualDataFromDb.Count, 
+                "Database should contain exactly the number of seeded records");
+            ValidateDataMatches(SeededTestData, actualDataFromDb, "All seeded data should match database content exactly");
             
-            // Additional specific validations
-            Assert.IsTrue(actualDataFromDb.Any(r => r.Name == "John Doe" && r.Balance == 1500.50m), 
-                "John Doe record should exist with correct balance");
-            Assert.IsTrue(actualDataFromDb.Any(r => r.Name == "Alice Brown" && !r.IsActive), 
-                "Alice Brown should be inactive");
-            
-            // Validate counts by status
-            var activeCount = actualDataFromDb.Count(r => r.IsActive);
-            var expectedActiveCount = SeededTestData.Count(r => r.IsActive);
-            Assert.AreEqual(expectedActiveCount, activeCount, "Active record count should match");
-        }
-
-        /// <summary>
-        /// Test that demonstrates validating a specific record after an update operation
-        /// Shows how to fetch and validate individual records
-        /// </summary>
-        [TestMethod]
-        public async Task UpdateItemEndpoint_ValidateChangesInDatabase()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // Get the original record that we expect to be in the database
-            var originalRecord = SeededTestData.FirstOrDefault(r => r.Id == 1);
-            Assert.IsNotNull(originalRecord, "Test record with ID=1 should exist in seeded data");
-
-            // Verify the original record exists in the database
-            var recordBeforeUpdate = await FetchActualRecordById(1);
-            ValidateRecordMatches(originalRecord, recordBeforeUpdate, "Original record should match seeded data");
-
-            // Update the record via API
-            var updatedItem = new
-            {
-                ID = 1,
-                NAME = "Updated John Doe",
-                EMAIL = "updated.john@example.com",
-                PHONE = "+1-555-0199",
-                IS_ACTIVE = true,
-                BALANCE = 2000.00
-            };
-
-            var json = JsonConvert.SerializeObject(updatedItem);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items(1)", content);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                // Fetch the updated record from the database
-                var recordAfterUpdate = await FetchActualRecordById(1);
-                
-                // Validate the changes were applied
-                Assert.IsNotNull(recordAfterUpdate, "Updated record should exist in database");
-                Assert.AreEqual("Updated John Doe", recordAfterUpdate.Name, "Name should be updated");
-                Assert.AreEqual("updated.john@example.com", recordAfterUpdate.Email, "Email should be updated");
-                Assert.AreEqual(2000.00m, recordAfterUpdate.Balance, "Balance should be updated");
-                
-                // Validate fields that shouldn't have changed
-                Assert.AreEqual(originalRecord.Id, recordAfterUpdate.Id, "ID should remain the same");
-                Assert.AreEqual(originalRecord.Phone, recordAfterUpdate.Phone, "Phone should remain the same");
-            }
-        }
-
-        /// <summary>
-        /// Test that demonstrates creating a new record and validating it appears in the database
-        /// Shows how to validate newly created data
-        /// </summary>
-        [TestMethod]
-        public async Task CreateItemEndpoint_ValidateNewRecordInDatabase()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // Get the current record count
-            var initialRecords = await FetchActualDataFromDatabase();
-            var initialCount = initialRecords.Count;
-
-            // Create a new record
-            var newItem = new
-            {
-                ID = 999, // Use a high ID to avoid conflicts
-                NAME = "Test Customer",
-                EMAIL = "test@example.com",
-                PHONE = "+1-555-0199",
-                IS_ACTIVE = true,
-                BALANCE = 100.00
-            };
-
-            var json = JsonConvert.SerializeObject(newItem);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", content);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                // Fetch the new record from the database
-                var createdRecord = await FetchActualRecordById(999);
-                
-                Assert.IsNotNull(createdRecord, "Created record should exist in database");
-                Assert.AreEqual("Test Customer", createdRecord.Name, "Name should match");
-                Assert.AreEqual("test@example.com", createdRecord.Email, "Email should match");
-                Assert.AreEqual(100.00m, createdRecord.Balance, "Balance should match");
-                Assert.IsTrue(createdRecord.IsActive, "Should be active");
-
-                // Validate the total count increased
-                var finalRecords = await FetchActualDataFromDatabase();
-                Assert.AreEqual(initialCount + 1, finalRecords.Count, "Record count should increase by 1");
-            }
-        }
-
-        /// <summary>
-        /// Test that demonstrates validating filtered data using the TestDataRecord model
-        /// Shows how to validate specific subsets of data
-        /// </summary>
-        [TestMethod]
-        public async Task ValidateFilteredData_ActiveRecordsOnly()
-        {
-            // Get expected active records from our seeded data
+            // Business rule validations using dynamic seeded data
             var expectedActiveRecords = SeededTestData.Where(r => r.IsActive).ToList();
+            var expectedInactiveRecords = SeededTestData.Where(r => !r.IsActive).ToList();
+            var actualActiveRecords = actualDataFromDb.Where(r => r.IsActive).ToList();
+            var actualInactiveRecords = actualDataFromDb.Where(r => !r.IsActive).ToList();
             
-            // This would typically involve an API call that filters for active records
-            // For demonstration, we'll fetch all data and filter it
-            var allActualRecords = await FetchActualDataFromDatabase();
-            var actualActiveRecords = allActualRecords.Where(r => r.IsActive).ToList();
+            Assert.AreEqual(expectedActiveRecords.Count, actualActiveRecords.Count, "Active record counts should match");
+            Assert.AreEqual(expectedInactiveRecords.Count, actualInactiveRecords.Count, "Inactive record counts should match");
             
-            // Validate that the active records match what we expect
-            Assert.AreEqual(expectedActiveRecords.Count, actualActiveRecords.Count, "Active record count should match");
+            // Data quality validations
+            Assert.IsTrue(actualDataFromDb.All(r => r.Id > 0), "All records should have positive IDs");
+            Assert.IsTrue(actualDataFromDb.All(r => !string.IsNullOrEmpty(r.Name)), "All records should have names");
+            Assert.IsTrue(actualDataFromDb.All(r => !string.IsNullOrEmpty(r.Email)), "All records should have emails");
+            Assert.IsTrue(actualDataFromDb.All(r => r.Balance >= 0), "All balances should be non-negative");
             
-            foreach (var expectedRecord in expectedActiveRecords)
+            // Validate specific business scenarios from seeded data
+            var highestBalanceExpected = SeededTestData.OrderByDescending(r => r.Balance).First();
+            var highestBalanceActual = actualDataFromDb.OrderByDescending(r => r.Balance).First();
+            ValidateRecordMatches(highestBalanceExpected, highestBalanceActual, "Highest balance record");
+            
+            var lowestBalanceExpected = SeededTestData.OrderBy(r => r.Balance).First();
+            var lowestBalanceActual = actualDataFromDb.OrderBy(r => r.Balance).First();
+            ValidateRecordMatches(lowestBalanceExpected, lowestBalanceActual, "Lowest balance record");
+        }
+
+        /// <summary>
+        /// End-to-end test validating complete CRUD operation lifecycle with database verification
+        /// </summary>
+        [TestMethod]
+        public async Task CrudOperations_EndToEndValidation()
+        {
+            var testToken = GetTestToken();
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // 1. CREATE: Create a new record based on seeded template
+            var templateRecord = SeededTestData.OrderBy(r => r.Balance).FirstOrDefault();
+            var newId = SeededTestData.Max(r => r.Id) + 200;
+            
+            var newRecord = new TestDataRecord(newId, $"Test {templateRecord.Name}", 
+                templateRecord.Email.Replace("@", "+test@"), templateRecord.Phone.Replace("555", "999"), 
+                true, templateRecord.Balance * 2);
+
+            var createResponse = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", 
+                CreateJsonContent(newRecord));
+            Assert.AreEqual(System.Net.HttpStatusCode.Created, createResponse.StatusCode, "Create should succeed");
+
+            // Verify creation in database
+            var createdRecord = await FetchActualRecordById(newId);
+            ValidateRecordMatches(newRecord, createdRecord, "Created record should match input");
+
+            // 2. READ: Verify we can retrieve the created record via API
+            var readResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, readResponse.StatusCode, "Read should succeed");
+            
+            var readContent = await readResponse.Content.ReadAsStringAsync();
+            var apiRecord = JsonConvert.DeserializeObject<CustomerItem>(readContent);
+            ValidateRecordMatches(newRecord, apiRecord.ToTestDataRecord(), "API read should return correct data");
+
+            // 3. UPDATE: Modify the record
+            var updatedRecord = new TestDataRecord(newId, $"Modified {newRecord.Name}", 
+                newRecord.Email.Replace("+test@", "+updated@"), newRecord.Phone, 
+                !newRecord.IsActive, newRecord.Balance + 500m);
+
+            var updateResponse = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')", 
+                CreateJsonContent(updatedRecord));
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, updateResponse.StatusCode, "Update should succeed");
+
+            // Verify update in database
+            var modifiedRecord = await FetchActualRecordById(newId);
+            ValidateRecordMatches(updatedRecord, modifiedRecord, "Updated record should match new values");
+
+            // 4. DELETE: Remove the record
+            var deleteResponse = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, deleteResponse.StatusCode, "Delete should succeed");
+
+            // Verify deletion in database
+            var deletedRecord = await FetchActualRecordById(newId);
+            Assert.IsNull(deletedRecord, "Record should be deleted from database");
+
+            // Verify read after delete returns appropriate response
+            var readAfterDeleteResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
+            Assert.AreEqual(System.Net.HttpStatusCode.NotFound, readAfterDeleteResponse.StatusCode, "Read after delete should return 404");
+        }
+
+
+
+        /// <summary>
+        /// Performance and edge case test for API behavior under various conditions
+        /// </summary>
+        [TestMethod]
+        public async Task ApiPerformance_EdgeCasesAndValidation()
+        {
+            var testToken = GetTestToken();
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Test 1: Validate large result set handling
+            var allItemsResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items");
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, allItemsResponse.StatusCode, "Should handle full dataset retrieval");
+            
+            var allContent = await allItemsResponse.Content.ReadAsStringAsync();
+            var allData = JsonConvert.DeserializeObject<ODataResponse<CustomerItem>>(allContent);
+            Assert.AreEqual(SeededTestData.Count, allData.Value.Count, "Should return all seeded records");
+
+            // Test 2: Balance-based filtering (business logic validation)
+            var highBalanceThreshold = SeededTestData.Average(r => r.Balance);
+            var expectedHighBalanceCount = SeededTestData.Count(r => r.Balance > highBalanceThreshold);
+            
+            var balanceFilterResponse = await HttpClient.GetAsync(
+                $"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=BALANCE gt {highBalanceThreshold}");
+            
+            if (balanceFilterResponse.IsSuccessStatusCode)
             {
-                var actualRecord = actualActiveRecords.FirstOrDefault(r => r.Id == expectedRecord.Id);
-                ValidateRecordMatches(expectedRecord, actualRecord, $"Active record with ID {expectedRecord.Id}");
+                var balanceContent = await balanceFilterResponse.Content.ReadAsStringAsync();
+                var balanceData = JsonConvert.DeserializeObject<ODataResponse<CustomerItem>>(balanceContent);
+                Assert.AreEqual(expectedHighBalanceCount, balanceData.Value.Count, 
+                    $"Should return {expectedHighBalanceCount} records with balance > {highBalanceThreshold:C}");
+                
+                // Validate all returned records meet the criteria
+                Assert.IsTrue(balanceData.Value.All(item => item.BALANCE > (decimal)highBalanceThreshold),
+                    "All filtered records should have balance above threshold");
             }
+
+            // Test 3: Edge case - non-existent record
+            var maxId = SeededTestData.Max(r => r.Id);
+            var nonExistentResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{maxId + 999}')");
+            Assert.AreEqual(System.Net.HttpStatusCode.NotFound, nonExistentResponse.StatusCode, 
+                "Should return 404 for non-existent records");
+
+            // Test 4: Email pattern validation (data quality check)
+            var emailValidationRecords = allData.Value.Select(item => item.ToTestDataRecord()).ToList();
+            Assert.IsTrue(emailValidationRecords.All(r => r.Email.Contains("@") && r.Email.Contains(".")),
+                "All email addresses should be properly formatted");
+            
+            // Test 5: Phone number consistency check
+            var phonePattern = SeededTestData.First().Phone.Substring(0, 3); // Get pattern from first record
+            var consistentPhoneCount = emailValidationRecords.Count(r => r.Phone.StartsWith(phonePattern));
+                         Assert.IsTrue(consistentPhoneCount > 0, "Should have records with consistent phone patterns");
+        }
+
+        /// <summary>
+        /// Helper method to create JSON content from TestDataRecord
+        /// </summary>
+        private StringContent CreateJsonContent(TestDataRecord record)
+        {
+            var json = JsonConvert.SerializeObject(new
+            {
+                ID = record.Id,
+                NAME = record.Name,
+                EMAIL = record.Email,
+                PHONE = record.Phone,
+                IS_ACTIVE = record.IsActive,
+                BALANCE = record.Balance
+            });
+            return new StringContent(json, Encoding.UTF8, "application/json");
         }
     }
 } 

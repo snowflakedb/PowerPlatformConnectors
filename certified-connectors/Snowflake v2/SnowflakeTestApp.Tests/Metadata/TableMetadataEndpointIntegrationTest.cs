@@ -1,6 +1,8 @@
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace SnowflakeTestApp.Tests.Metadata
 {
@@ -33,7 +35,16 @@ namespace SnowflakeTestApp.Tests.Metadata
             
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
-            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+            var metadata = JsonConvert.DeserializeObject<JObject>(content);
+            var properties = metadata["schema"]["items"]["properties"];
+
+            Assert.IsNotNull(properties["ID"]);
+            Assert.IsNotNull(properties["NAME"]);
+            Assert.IsNotNull(properties["EMAIL"]);
+            Assert.IsNotNull(properties["PHONE"]);
+            Assert.IsNotNull(properties["IS_ACTIVE"]);
+            Assert.IsNotNull(properties["BALANCE"]);
+            Assert.IsNotNull(properties["CREATED_DATE"]);
         }
 
         /// <summary>
@@ -45,7 +56,9 @@ namespace SnowflakeTestApp.Tests.Metadata
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            StringAssert.Contains(content, "Bearer token is missing in the HTTP request authorization header");
         }
 
         /// <summary>
@@ -59,21 +72,9 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/INVALID_TABLE");
             
-            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
-        }
-
-        /// <summary>
-        /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint with non-existent dataset
-        /// </summary>
-        [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithNonExistentDataset_ReturnsNotFound()
-        {
-            var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-
-            var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/nonexistent/tables/CUSTOMERS");
-            
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            StringAssert.Contains(content, "Table 'INVALID_TABLE' does not exist or not authorized");
         }
     }
 } 

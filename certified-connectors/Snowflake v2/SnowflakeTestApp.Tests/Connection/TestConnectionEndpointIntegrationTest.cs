@@ -48,6 +48,7 @@ namespace SnowflakeTestApp.Tests.Connection
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Bearer token is missing in the HTTP request authorization header.");
         }
 
         /// <summary>
@@ -63,6 +64,7 @@ namespace SnowflakeTestApp.Tests.Connection
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Invalid OAuth access token.");
         }
 
         /// <summary>
@@ -78,6 +80,7 @@ namespace SnowflakeTestApp.Tests.Connection
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Invalid OAuth access token.");
         }
 
         /// <summary>
@@ -93,6 +96,7 @@ namespace SnowflakeTestApp.Tests.Connection
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+            StringAssert.Contains(content, "The requested resource does not support http method 'POST'.");
         }
     }
 } 
