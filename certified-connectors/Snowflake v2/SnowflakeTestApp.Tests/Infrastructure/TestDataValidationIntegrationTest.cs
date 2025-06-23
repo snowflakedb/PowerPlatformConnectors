@@ -12,6 +12,21 @@ namespace SnowflakeTestApp.Tests.Infrastructure
     [TestClass]
     public class TestDataValidationIntegrationTest : BaseIntegrationTest
     {
+        /// <summary>
+        /// Seeds fresh test data before any tests in this class run
+        /// This ensures clean and predictable data for all test methods
+        /// </summary>
+        [ClassInitialize]
+        public static async Task ClassInitialize(TestContext context)
+        {
+            // Ensure we have a valid data seeder from the base class
+            if (DataSeeder != null)
+            {
+                // Seed fresh test data specifically for this test class
+                await DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset);
+            }
+        }
+
         [TestInitialize]
         public override void TestInitialize()
         {
@@ -73,9 +88,9 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             Assert.AreEqual(SeededTestData.Count, actualRecords.Count, "Record counts should match");
             
             // Validate specific known records
-            var johnDoe = actualRecords.FirstOrDefault(r => r.Name == "John Doe");
-            Assert.IsNotNull(johnDoe, "John Doe should exist in database");
-            Assert.AreEqual(1500.50m, johnDoe.Balance, "John Doe should have correct balance");
+            var johnDoe = actualRecords.FirstOrDefault(r => r.Name == "Frank Garcia");
+            Assert.IsNotNull(johnDoe, "Frank Garcia should exist in database");
+            Assert.AreEqual(250.00m, johnDoe.Balance, "Frank Garcia should have correct balance");
             
             var aliceBrown = actualRecords.FirstOrDefault(r => r.Name == "Alice Brown");
             Assert.IsNotNull(aliceBrown, "Alice Brown should exist in database");

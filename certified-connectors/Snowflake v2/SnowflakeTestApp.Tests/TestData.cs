@@ -41,7 +41,7 @@ namespace SnowflakeTestApp.Tests
         /// <summary>
         /// Test timeout for SQL operations (seconds)
         /// </summary>
-        public const int DefaultSqlTimeout = 60;
+        public const int DefaultSqlTimeout = 10;
 
         /// <summary>
         /// Sample SQL statement for testing

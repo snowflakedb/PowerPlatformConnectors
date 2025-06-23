@@ -249,35 +249,12 @@ namespace SnowflakeTestApp.Tests.Infrastructure
 
             try
             {
-                var response = JsonConvert.DeserializeObject<SnowflakeResponse>(snowflakeResponse);
-                
-                // Handle the data array from Snowflake response
-                if (response?.Data != null)
-                {
-                    foreach (var row in response.Data)
-                    {
-                        if (row != null && row.Length >= 6)
-                        {
-                            var record = new TestDataRecord
-                            {
-                                Id = Convert.ToInt32(row[0]),
-                                Name = row[1]?.ToString() ?? string.Empty,
-                                Email = row[2]?.ToString() ?? string.Empty,
-                                Phone = row[3]?.ToString() ?? string.Empty,
-                                IsActive = Convert.ToBoolean(row[4]),
-                                Balance = Convert.ToDecimal(row[5])
-                            };
-                            records.Add(record);
-                        }
-                    }
-                }
+                return JsonConvert.DeserializeObject<SnowflakeResponse>(snowflakeResponse).Data.ToList();
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"Failed to map Snowflake response to TestDataRecord objects. Response: {snowflakeResponse}. Error: {ex.Message}", ex);
             }
-
-            return records;
         }
 
         /// <summary>
@@ -285,8 +262,8 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// </summary>
         private class SnowflakeResponse
         {
-            [JsonProperty("data")]
-            public object[][] Data { get; set; }
+            [JsonProperty("Data")]
+            public TestDataRecord[] Data { get; set; }
         }
 
         /// <summary>

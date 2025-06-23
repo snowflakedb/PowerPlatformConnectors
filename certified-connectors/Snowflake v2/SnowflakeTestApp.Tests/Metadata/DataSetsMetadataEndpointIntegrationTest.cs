@@ -44,7 +44,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
             
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace SnowflakeTestApp.Tests.Infrastructure
 {
@@ -8,12 +9,19 @@ namespace SnowflakeTestApp.Tests.Infrastructure
     /// </summary>
     public class TestDataRecord
     {
+        [JsonProperty("ID")]
         public int Id { get; set; }
+        [JsonProperty("NAME")]
         public string Name { get; set; }
+        [JsonProperty("EMAIL")]
         public string Email { get; set; }
+        [JsonProperty("PHONE")]
         public string Phone { get; set; }
+        [JsonProperty("IS_ACTIVE")]
         public bool IsActive { get; set; }
+        [JsonProperty("BALANCE")]
         public decimal Balance { get; set; }
+        [JsonProperty("CREATED_DATE")]
         public DateTime? CreatedDate { get; set; }
 
         public TestDataRecord() { }

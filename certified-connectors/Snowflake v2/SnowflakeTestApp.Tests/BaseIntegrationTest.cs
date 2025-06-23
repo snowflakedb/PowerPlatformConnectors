@@ -19,7 +19,7 @@ namespace SnowflakeTestApp.Tests
     {
         protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
-        private static TestDataSeeder DataSeeder;
+        protected static TestDataSeeder DataSeeder;
 
         /// <summary>
         /// Gets the test records that were seeded into the database
