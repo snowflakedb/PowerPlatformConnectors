@@ -31,8 +31,9 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
 
         /// <summary>
@@ -44,7 +45,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         /// <summary>
@@ -58,7 +59,7 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/INVALID_TABLE");
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -72,7 +73,7 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/nonexistent/tables/CUSTOMERS");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 } 

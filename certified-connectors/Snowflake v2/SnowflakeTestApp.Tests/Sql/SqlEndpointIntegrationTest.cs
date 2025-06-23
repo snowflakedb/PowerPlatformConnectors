@@ -50,8 +50,9 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(responseContent), "Response content should not be empty");
         }
 
         /// <summary>
@@ -81,8 +82,9 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(responseContent), "Response content should not be empty");
         }
 
         /// <summary>
@@ -110,7 +112,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -134,7 +136,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -162,7 +164,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -191,7 +193,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -205,7 +207,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/sql/results?statementHandle=test-handle");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -217,7 +219,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/sql/results?statementHandle=test-handle");
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -231,7 +233,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/cancel?statementHandle=test-handle", new StringContent(""));
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -243,7 +245,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/cancel?statementHandle=test-handle", new StringContent(""));
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -257,7 +259,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql/cancel", new StringContent(""));
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         /// <summary>
@@ -282,7 +284,7 @@ namespace SnowflakeTestApp.Tests.Sql
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/sql", content);
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
     }
 } 

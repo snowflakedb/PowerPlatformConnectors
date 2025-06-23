@@ -5,6 +5,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using SnowflakeTestApp.Tests.Infrastructure;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SnowflakeTestApp.Tests
 {
@@ -12,11 +14,18 @@ namespace SnowflakeTestApp.Tests
     /// Base class for integration tests that provides common functionality
     /// Data is seeded once before all tests run
     /// </summary>
+    [TestClass]
     public abstract class BaseIntegrationTest
     {
         protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
         private static TestDataSeeder DataSeeder;
+
+        /// <summary>
+        /// Gets the test records that were seeded into the database
+        /// Use this in tests to validate against the expected data
+        /// </summary>
+        protected static List<TestDataRecord> SeededTestData => DataSeeder?.SeededRecords ?? new List<TestDataRecord>();
 
         /// <summary>
         /// Initializes test data once before all tests in the assembly run
@@ -128,27 +137,6 @@ namespace SnowflakeTestApp.Tests
         public TestContext TestContext { get; set; }
 
         /// <summary>
-        /// Helper method to assert that a response has the expected status code
-        /// </summary>
-        protected void AssertStatusCode(HttpResponseMessage response, System.Net.HttpStatusCode expectedStatusCode)
-        {
-            if (response.StatusCode != expectedStatusCode)
-            {
-                var content = response.Content.ReadAsStringAsync().Result;
-                Assert.Fail($"Expected status code {expectedStatusCode} but got {response.StatusCode}. Response: {content}");
-            }
-        }
-
-        /// <summary>
-        /// Helper method to assert that a response has content
-        /// </summary>
-        protected void AssertResponseHasContent(HttpResponseMessage response)
-        {
-            var content = response.Content.ReadAsStringAsync().Result;
-            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
-        }
-
-        /// <summary>
         /// Helper method to check if the SnowflakeTestApp is running
         /// </summary>
         protected void EnsureApplicationIsRunning()
@@ -191,6 +179,74 @@ namespace SnowflakeTestApp.Tests
         {
             var json = JsonConvert.SerializeObject(data);
             return new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        }
+
+        /// <summary>
+        /// Fetches actual data from Snowflake and returns it as TestDataRecord objects
+        /// Use this to validate that the data in the database matches expectations
+        /// </summary>
+        /// <param name="tableName">Optional table name (defaults to the test table)</param>
+        /// <returns>List of TestDataRecord objects from the database</returns>
+        protected async Task<List<TestDataRecord>> FetchActualDataFromDatabase(string tableName = null)
+        {
+            if (DataSeeder == null)
+            {
+                throw new InvalidOperationException("DataSeeder not initialized. Make sure AssemblyInitialize ran successfully.");
+            }
+
+            return await DataSeeder.FetchTestDataFromDatabase(tableName);
+        }
+
+        /// <summary>
+        /// Fetches a specific record by ID from Snowflake
+        /// </summary>
+        /// <param name="id">ID of the record to fetch</param>
+        /// <param name="tableName">Optional table name (defaults to the test table)</param>
+        /// <returns>TestDataRecord if found, null otherwise</returns>
+        protected async Task<TestDataRecord> FetchActualRecordById(int id, string tableName = null)
+        {
+            if (DataSeeder == null)
+            {
+                throw new InvalidOperationException("DataSeeder not initialized. Make sure AssemblyInitialize ran successfully.");
+            }
+
+            return await DataSeeder.FetchTestRecordById(id, tableName);
+        }
+
+        /// <summary>
+        /// Validates that the actual data from database matches the expected seeded data
+        /// </summary>
+        /// <param name="expectedRecords">Expected records (usually from SeededTestData)</param>
+        /// <param name="actualRecords">Actual records from database</param>
+        /// <param name="message">Optional custom assertion message</param>
+        protected void ValidateDataMatches(List<TestDataRecord> expectedRecords, List<TestDataRecord> actualRecords, string message = null)
+        {
+            message = message ?? "Database records should match seeded test data";
+            
+            Assert.AreEqual(expectedRecords.Count, actualRecords.Count, $"{message}: Record count mismatch");
+            
+            for (int i = 0; i < expectedRecords.Count; i++)
+            {
+                var expected = expectedRecords[i];
+                var actual = actualRecords.FirstOrDefault(r => r.Id == expected.Id);
+                
+                Assert.IsNotNull(actual, $"{message}: Record with ID {expected.Id} not found in database");
+                Assert.AreEqual(expected, actual, $"{message}: Record with ID {expected.Id} does not match expected values");
+            }
+        }
+
+        /// <summary>
+        /// Validates that a single record matches the expected values
+        /// </summary>
+        /// <param name="expected">Expected record</param>
+        /// <param name="actual">Actual record from database</param>
+        /// <param name="message">Optional custom assertion message</param>
+        protected void ValidateRecordMatches(TestDataRecord expected, TestDataRecord actual, string message = null)
+        {
+            message = message ?? $"Record with ID {expected?.Id} should match expected values";
+            
+            Assert.IsNotNull(actual, $"{message}: Record not found in database");
+            Assert.AreEqual(expected, actual, message);
         }
     }
 } 

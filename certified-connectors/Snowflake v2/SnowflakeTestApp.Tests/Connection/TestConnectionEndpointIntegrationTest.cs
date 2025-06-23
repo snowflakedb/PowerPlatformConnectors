@@ -34,7 +34,7 @@ namespace SnowflakeTestApp.Tests.Connection
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -45,8 +45,9 @@ namespace SnowflakeTestApp.Tests.Connection
         public async Task TestConnectionEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
-            
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -59,8 +60,9 @@ namespace SnowflakeTestApp.Tests.Connection
             HttpClient.DefaultRequestHeaders.Add("Authorization", "Bearer invalid-token");
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
-            
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -73,8 +75,9 @@ namespace SnowflakeTestApp.Tests.Connection
             HttpClient.DefaultRequestHeaders.Add("Authorization", "InvalidFormat");
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
-            
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -87,8 +90,9 @@ namespace SnowflakeTestApp.Tests.Connection
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/testconnection", new StringContent(""));
-            
-            AssertStatusCode(response, HttpStatusCode.MethodNotAllowed);
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
         }
     }
 } 

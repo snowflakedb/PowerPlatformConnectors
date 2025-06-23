@@ -34,7 +34,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onnewitems");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace SnowflakeTestApp.Tests.Triggers
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onnewitems");
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onupdateditems");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace SnowflakeTestApp.Tests.Triggers
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onupdateditems");
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/ondeleteditems");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace SnowflakeTestApp.Tests.Triggers
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/ondeleteditems");
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onchangeditems");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace SnowflakeTestApp.Tests.Triggers
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/onchangeditems");
             
-            AssertStatusCode(response, HttpStatusCode.InternalServerError);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/INVALID_TABLE/onnewitems");
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/invalid_dataset/tables/{TestTable}/onnewitems");
             
-            AssertStatusCode(response, HttpStatusCode.BadRequest);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         /// <summary>
@@ -166,7 +166,7 @@ namespace SnowflakeTestApp.Tests.Triggers
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/{TestDataset}/tables/{TestTable}/nonexistent");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 } 

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +16,12 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly string _bearerToken;
+
+        /// <summary>
+        /// Gets the test records that were seeded into the database
+        /// This allows tests to validate against the same data structure
+        /// </summary>
+        public List<TestDataRecord> SeededRecords { get; private set; } = new List<TestDataRecord>();
 
         public TestDataSeeder(HttpClient httpClient, string baseUrl, string bearerToken)
         {
@@ -36,10 +44,16 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             try
             {
                 // First, try to create the table if it doesn't exist
-                await CreateTableIfNotExists(tableName, dataset);
-                
+                await CreateTableIfNotExists(tableName);
+
+                // Clear the table
+                await CleanupTestTable(tableName);
+
+                // Get the test records to seed
+                SeededRecords = SampleTestData.GetDefaultTestRecords();
+
                 // Then seed it with sample data
-                await SeedTableWithSampleData(tableName, dataset);
+                await SeedTableWithSampleData(tableName, SeededRecords);
                 
                 return true;
             }
@@ -50,13 +64,33 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         }
 
         /// <summary>
+        /// Seeds the test table with the provided test records
+        /// </summary>
+        /// <param name="tableName">Name of the table to seed</param>
+        /// <param name="records">Test records to insert</param>
+        public async Task SeedCustomTestData(string tableName, List<TestDataRecord> records)
+        {
+            try
+            {
+                await CreateTableIfNotExists(tableName);
+                await CleanupTestTable(tableName);
+                SeededRecords = new List<TestDataRecord>(records); // Create a copy
+                await SeedTableWithSampleData(tableName, records);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Could not seed custom test data into table '{tableName}': {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Creates a test table if it doesn't exist using SQL execution
         /// </summary>
-        private async Task CreateTableIfNotExists(string tableName, string dataset)
+        private async Task CreateTableIfNotExists(string tableName)
         {
             var createTableSql = $@"
-                CREATE TABLE IF NOT EXISTS {tableName} (
-                    ID NUMBER AUTOINCREMENT PRIMARY KEY,
+                CREATE OR ALTER TABLE {tableName} (
+                    ID NUMBER PRIMARY KEY,
                     NAME VARCHAR(255) NOT NULL,
                     EMAIL VARCHAR(255),
                     PHONE VARCHAR(50),
@@ -69,29 +103,22 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         }
 
         /// <summary>
-        /// Seeds the test table with sample data
+        /// Seeds the test table with sample data from TestDataRecord objects
         /// </summary>
-        private async Task SeedTableWithSampleData(string tableName, string dataset)
+        private async Task SeedTableWithSampleData(string tableName, List<TestDataRecord> records)
         {
-            // Check if table already has data
-            var countSql = $"SELECT COUNT(*) as record_count FROM {tableName}";
-            var countResult = await ExecuteSqlStatement(countSql);
-            
-            // Only seed if table is empty (this is a simple check)
-            // In a real scenario, you might want more sophisticated logic
-            
+            if (records == null || records.Count == 0)
+            {
+                throw new ArgumentException("No records provided for seeding", nameof(records));
+            }
+
+            var values = records.Select(r => 
+                $"({r.Id}, '{r.Name.Replace("'", "''")}', '{r.Email}', '{r.Phone}', {(r.IsActive ? "TRUE" : "FALSE")}, {r.Balance})"
+            );
+
             var seedDataSql = $@"
-                INSERT INTO {tableName} (NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES
-                ('John Doe', 'john.doe@example.com', '+1-555-0101', TRUE, 1500.50),
-                ('Jane Smith', 'jane.smith@example.com', '+1-555-0102', TRUE, 2750.00),
-                ('Bob Johnson', 'bob.johnson@example.com', '+1-555-0103', TRUE, 890.25),
-                ('Alice Brown', 'alice.brown@example.com', '+1-555-0104', FALSE, 0.00),
-                ('Charlie Wilson', 'charlie.wilson@example.com', '+1-555-0105', TRUE, 3200.75),
-                ('Diana Davis', 'diana.davis@example.com', '+1-555-0106', TRUE, 1100.00),
-                ('Eve Miller', 'eve.miller@example.com', '+1-555-0107', TRUE, 4500.25),
-                ('Frank Garcia', 'frank.garcia@example.com', '+1-555-0108', FALSE, 250.00),
-                ('Grace Lee', 'grace.lee@example.com', '+1-555-0109', TRUE, 1875.50),
-                ('Henry Taylor', 'henry.taylor@example.com', '+1-555-0110', TRUE, 3350.00)";
+                INSERT INTO {tableName} (ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES
+                {string.Join(",\n                ", values)}";
 
             await ExecuteSqlStatement(seedDataSql);
         }
@@ -164,24 +191,102 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         }
 
         /// <summary>
-        /// Drops the test table completely
+        /// Fetches data from the test table and maps it to TestDataRecord objects
+        /// This allows for direct comparison between seeded data and actual database content
         /// </summary>
-        /// <param name="tableName">Name of the table to drop (defaults to TestData.DefaultTable)</param>
-        public async Task<bool> DropTestTable(string tableName = null)
+        /// <param name="tableName">Name of the table to fetch data from</param>
+        /// <returns>List of TestDataRecord objects representing the actual data in the database</returns>
+        public async Task<List<TestDataRecord>> FetchTestDataFromDatabase(string tableName = null)
         {
-            // Handle default value inside the method
             tableName = tableName ?? TestData.DefaultTable;
 
             try
             {
-                var dropSql = $"DROP TABLE IF EXISTS {tableName}";
-                await ExecuteSqlStatement(dropSql);
-                return true;
+                var sqlStatement = $"SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {tableName} ORDER BY ID";
+                var responseContent = await ExecuteSqlStatement(sqlStatement);
+                
+                return MapSnowflakeResponseToTestDataRecords(responseContent);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Could not drop test table '{tableName}': {ex.Message}", ex);
+                throw new InvalidOperationException($"Could not fetch test data from table '{tableName}': {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Fetches a specific test record by ID from the database
+        /// </summary>
+        /// <param name="id">ID of the record to fetch</param>
+        /// <param name="tableName">Name of the table to fetch from</param>
+        /// <returns>TestDataRecord if found, null otherwise</returns>
+        public async Task<TestDataRecord> FetchTestRecordById(int id, string tableName = null)
+        {
+            tableName = tableName ?? TestData.DefaultTable;
+
+            try
+            {
+                var sqlStatement = $"SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {tableName} WHERE ID = {id}";
+                var responseContent = await ExecuteSqlStatement(sqlStatement);
+                
+                var records = MapSnowflakeResponseToTestDataRecords(responseContent);
+                return records.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Could not fetch test record with ID {id} from table '{tableName}': {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Maps the Snowflake SQL response to TestDataRecord objects
+        /// This handles the JSON response structure from Snowflake
+        /// </summary>
+        /// <param name="snowflakeResponse">Raw JSON response from Snowflake SQL endpoint</param>
+        /// <returns>List of TestDataRecord objects</returns>
+        private List<TestDataRecord> MapSnowflakeResponseToTestDataRecords(string snowflakeResponse)
+        {
+            var records = new List<TestDataRecord>();
+
+            try
+            {
+                var response = JsonConvert.DeserializeObject<SnowflakeResponse>(snowflakeResponse);
+                
+                // Handle the data array from Snowflake response
+                if (response?.Data != null)
+                {
+                    foreach (var row in response.Data)
+                    {
+                        if (row != null && row.Length >= 6)
+                        {
+                            var record = new TestDataRecord
+                            {
+                                Id = Convert.ToInt32(row[0]),
+                                Name = row[1]?.ToString() ?? string.Empty,
+                                Email = row[2]?.ToString() ?? string.Empty,
+                                Phone = row[3]?.ToString() ?? string.Empty,
+                                IsActive = Convert.ToBoolean(row[4]),
+                                Balance = Convert.ToDecimal(row[5])
+                            };
+                            records.Add(record);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to map Snowflake response to TestDataRecord objects. Response: {snowflakeResponse}. Error: {ex.Message}", ex);
+            }
+
+            return records;
+        }
+
+        /// <summary>
+        /// Simple class to represent the Snowflake SQL response structure
+        /// </summary>
+        private class SnowflakeResponse
+        {
+            [JsonProperty("data")]
+            public object[][] Data { get; set; }
         }
     }
 } 

@@ -32,8 +32,9 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables");
             
-            AssertStatusCode(response, System.Net.HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
 
         /// <summary>
@@ -47,7 +48,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets/default/tables");
             
-            AssertStatusCode(response, System.Net.HttpStatusCode.InternalServerError);
+            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>

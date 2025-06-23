@@ -30,8 +30,9 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
 
         /// <summary>
@@ -43,7 +44,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         /// <summary>
@@ -57,8 +58,9 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/default");
             
-            AssertStatusCode(response, HttpStatusCode.OK);
-            AssertResponseHasContent(response);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
 
         /// <summary>
@@ -70,7 +72,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/default");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         /// <summary>
@@ -84,7 +86,7 @@ namespace SnowflakeTestApp.Tests.Metadata
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/nonexistent");
             
-            AssertStatusCode(response, HttpStatusCode.NotFound);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 } 
