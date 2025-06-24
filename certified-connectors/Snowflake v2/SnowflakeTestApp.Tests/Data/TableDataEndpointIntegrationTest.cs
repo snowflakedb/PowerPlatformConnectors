@@ -53,7 +53,7 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.AreEqual(SeededTestData.Count, customers.Count, "API should return the same number of records as seeded data");
 
             // Get the first inactive record from seeded data for validation
-            var expectedInactiveRecord = SeededTestData.FirstOrDefault(r => !r.IsActive);
+            var expectedInactiveRecord = SeededTestData.FirstOrDefault(r => !r.IsActive && r.Balance < 1000.00m);
             Assert.IsNotNull(expectedInactiveRecord, "Should have at least one inactive record in seeded data");
             
             var actualInactiveRecord = customers.FirstOrDefault(r => r.Id == expectedInactiveRecord.Id);

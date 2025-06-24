@@ -29,13 +29,6 @@ This test suite provides comprehensive coverage for all Snowflake V2 connector e
   - POST `/sql/{statementHandle}` - Get query results
   - POST `/sql/{statementHandle}/cancel` - Cancel running queries
 
-### Trigger Operations
-- **TriggerEndpointIntegrationTest.cs** - Tests trigger endpoints for:
-  - `/datasets/{dataset}/tables/{table}/onnewitems` - New items trigger
-  - `/datasets/{dataset}/tables/{table}/onupdateditems` - Updated items trigger
-  - `/datasets/{dataset}/tables/{table}/onchangeditems` - Changed items trigger
-  - `/datasets/{dataset}/tables/{table}/ondeleteditems` - Deleted items trigger
-
 Each test file includes both positive (with authentication) and negative (without authentication, with invalid parameters) test cases to ensure comprehensive endpoint validation.
 
 ## Quick Start
