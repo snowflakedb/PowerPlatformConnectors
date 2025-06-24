@@ -27,8 +27,6 @@ namespace SnowflakeTestApp.Tests.Connection
 
         /// <summary>
         /// Test the /testconnection endpoint with authentication
-        /// Based on actual API testing, currently returns 500 Internal Server Error
-        /// This may indicate Snowflake connection configuration issues that need to be resolved
         /// </summary>
         [TestMethod]
         public async Task TestConnectionEndpoint_WithValidAuth_ReturnsOK()
@@ -43,7 +41,6 @@ namespace SnowflakeTestApp.Tests.Connection
 
         /// <summary>
         /// Test the endpoint without authentication
-        /// Based on actual API testing, returns 500 Internal Server Error (same as with auth)
         /// </summary>
         [TestMethod]
         public async Task TestConnectionEndpoint_WithoutAuth_ReturnsInternalServerError()
@@ -57,7 +54,6 @@ namespace SnowflakeTestApp.Tests.Connection
 
         /// <summary>
         /// Test the endpoint with invalid authentication
-        /// Based on actual API testing, returns 500 Internal Server Error (same as other scenarios)
         /// </summary>
         [TestMethod]
         public async Task TestConnectionEndpoint_WithInvalidAuth_ReturnsInternalServerError()
@@ -73,7 +69,6 @@ namespace SnowflakeTestApp.Tests.Connection
 
         /// <summary>
         /// Test the endpoint with malformed authorization header
-        /// Based on actual API testing, returns 500 Internal Server Error (same as other scenarios)
         /// </summary>
         [TestMethod]
         public async Task TestConnectionEndpoint_WithMalformedAuth_ReturnsInternalServerError()

@@ -56,7 +56,6 @@ namespace SnowflakeTestApp.Tests.Sql
 
         /// <summary>
         /// Test the POST /sql endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task ExecuteSqlStatementEndpoint_WithoutAuth_ReturnsBadRequest()

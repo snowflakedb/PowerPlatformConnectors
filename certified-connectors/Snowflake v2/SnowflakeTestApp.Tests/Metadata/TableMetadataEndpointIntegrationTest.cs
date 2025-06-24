@@ -9,7 +9,6 @@ namespace SnowflakeTestApp.Tests.Metadata
     /// <summary>
     /// Integration tests for the table metadata endpoints.
     /// These tests document the expected behavior and can be used to verify the endpoints manually.
-    /// Based on actual API testing, unauthenticated requests return 404 Not Found.
     /// </summary>
     [TestClass]
     public class TableMetadataEndpointIntegrationTest : BaseIntegrationTest
@@ -49,7 +48,6 @@ namespace SnowflakeTestApp.Tests.Metadata
 
         /// <summary>
         /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint without authentication
-        /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
         public async Task GetTableMetadataEndpoint_WithoutAuth_ReturnsInternalServerError()

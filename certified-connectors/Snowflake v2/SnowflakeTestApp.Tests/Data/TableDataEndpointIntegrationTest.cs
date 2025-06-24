@@ -61,7 +61,6 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the GET items endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task GetItemsEndpoint_WithoutAuth_ReturnsInternalServerError()
@@ -110,7 +109,6 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the GET single item endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task GetItemEndpoint_WithoutAuth_ReturnsInternalServerError()
@@ -159,7 +157,8 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the POST create item endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
+        /// 
+        /// 
         /// </summary>
         [TestMethod]
         public async Task CreateItemEndpoint_WithoutAuth_ReturnsInternalServerError()
@@ -209,7 +208,6 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the PUT update item endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task UpdateItemEndpoint_WithoutAuth_ReturnsInternalServerError()
@@ -247,7 +245,6 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the DELETE item endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task DeleteItemEndpoint_WithoutAuth_ReturnsInternalServerError()

@@ -39,7 +39,6 @@ namespace SnowflakeTestApp.Tests.Data
 
         /// <summary>
         /// Test the /datasets/{dataset}/tables endpoint without authentication
-        /// Based on actual API behavior, returns 500 Internal Server Error (not 401 Unauthorized)
         /// </summary>
         [TestMethod]
         public async Task GetTablesEndpoint_WithoutAuth_ReturnsInternalServerError()
