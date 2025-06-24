@@ -51,7 +51,9 @@ namespace SnowflakeTestApp.Tests.Sql
             
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             var responseContent = await response.Content.ReadAsStringAsync();
-            Assert.IsFalse(string.IsNullOrEmpty(responseContent), "Response content should not be empty");
+
+            StringAssert.Contains(responseContent, "John Doe");
+            StringAssert.Contains(responseContent, "Jane Smith");
         }
 
         /// <summary>

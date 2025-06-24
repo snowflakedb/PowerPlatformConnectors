@@ -1,5 +1,3 @@
-using SnowflakeTestApp.Mocks;
-
 namespace SnowflakeTestApp.Tests
 {
     /// <summary>

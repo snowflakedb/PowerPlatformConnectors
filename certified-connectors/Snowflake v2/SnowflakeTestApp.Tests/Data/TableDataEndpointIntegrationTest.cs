@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -42,7 +41,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
 
@@ -69,7 +68,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
                 /// <summary>
@@ -89,7 +88,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{expectedRecord.Id}')");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
 
@@ -120,7 +119,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -149,9 +148,8 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", 
                 CreateJsonContent(newItem));
-            var xd = await response.Content.ReadAsStringAsync();
-            
-            Assert.AreEqual(System.Net.HttpStatusCode.Created, response.StatusCode, 
+
+            Assert.AreEqual(HttpStatusCode.Created, response.StatusCode, 
                 $"Should successfully create record based on template: {templateRecord.Name}");
         }
 
@@ -171,7 +169,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", content);
             
-            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -203,7 +201,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{recordToUpdate.Id}')", content);
             
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -221,7 +219,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')", content);
             
-            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -240,7 +238,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{recordToDelete.Id}')");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         /// <summary>
@@ -254,7 +252,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var response = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{testRecord.Id}')");
             
-            Assert.AreEqual(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         /// <summary>
@@ -267,7 +265,7 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('')/tables('{TestTable}')/items");
-            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode, "Expected HTTP 400 Bad Request");
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode, "Expected HTTP 400 Bad Request");
         }
 
         /// <summary>
@@ -280,7 +278,7 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('')/items");
-            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode, "Expected HTTP 400 Bad Request");
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode, "Expected HTTP 400 Bad Request");
         }
 
 
@@ -296,7 +294,7 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             
             var activeResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq true");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, activeResponse.StatusCode, "Active filter should succeed");
+            Assert.AreEqual(HttpStatusCode.OK, activeResponse.StatusCode, "Active filter should succeed");
             
             var activeContent = await activeResponse.Content.ReadAsStringAsync();
             var activeData = JsonConvert.DeserializeObject<ODataResponse<TestDataRecord>>(activeContent);
@@ -305,7 +303,7 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.IsTrue(activeData.Value.All(item => item.IsActive), "All filtered records should be active");
 
             var inactiveResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq false");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, inactiveResponse.StatusCode, "Inactive filter should succeed");
+            Assert.AreEqual(HttpStatusCode.OK, inactiveResponse.StatusCode, "Inactive filter should succeed");
             
             var inactiveContent = await inactiveResponse.Content.ReadAsStringAsync();
             var inactiveData = JsonConvert.DeserializeObject<ODataResponse<TestDataRecord>>(inactiveContent);
@@ -335,7 +333,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var createResponse = await HttpClient.PostAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items", 
                 CreateJsonContent(newRecord));
-            Assert.AreEqual(System.Net.HttpStatusCode.Created, createResponse.StatusCode, "Create should succeed");
+            Assert.AreEqual(HttpStatusCode.Created, createResponse.StatusCode, "Create should succeed");
 
             // Verify creation in database
             var createdRecord = await FetchActualRecordById(newId);
@@ -343,7 +341,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             // 2. Verify we can retrieve the created record via API
             var readResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, readResponse.StatusCode, "Read should succeed");
+            Assert.AreEqual(HttpStatusCode.OK, readResponse.StatusCode, "Read should succeed");
             
             var readContent = await readResponse.Content.ReadAsStringAsync();
             var apiRecord = JsonConvert.DeserializeObject<TestDataRecord>(readContent);
@@ -356,7 +354,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             var updateResponse = await HttpClient.PutAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')", 
                 CreateJsonContent(updatedRecord));
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, updateResponse.StatusCode, "Update should succeed");
+            Assert.AreEqual(HttpStatusCode.OK, updateResponse.StatusCode, "Update should succeed");
 
             // Verify update in database
             var modifiedRecord = await FetchActualRecordById(newId);
@@ -364,7 +362,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             // 4. Remove the record
             var deleteResponse = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, deleteResponse.StatusCode, "Delete should succeed");
+            Assert.AreEqual(HttpStatusCode.OK, deleteResponse.StatusCode, "Delete should succeed");
 
             // Verify deletion in database
             var deletedRecord = await FetchActualRecordById(newId);
@@ -372,7 +370,7 @@ namespace SnowflakeTestApp.Tests.Data
 
             // Verify read after delete returns appropriate response
             var readAfterDeleteResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
-            Assert.AreEqual(System.Net.HttpStatusCode.OK, readAfterDeleteResponse.StatusCode, "Read after delete should return 200 OK");
+            Assert.AreEqual(HttpStatusCode.OK, readAfterDeleteResponse.StatusCode, "Read after delete should return 200 OK");
             
             // Validate that no test record values are present in the response
             var responseContent = await readAfterDeleteResponse.Content.ReadAsStringAsync();
