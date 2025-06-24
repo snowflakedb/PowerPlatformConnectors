@@ -9,10 +9,29 @@ using Newtonsoft.Json;
 namespace SnowflakeTestApp.Tests.Infrastructure
 {
     /// <summary>
-    /// Handles creation and seeding of test tables with sample data
+    /// Handles creation and seeding of test tables with sample data.
     /// </summary>
     public class TestDataSeeder : IDisposable
     {
+        private const string SQL_ENDPOINT = "/sql";
+        private const string APPLICATION_JSON = "application/json";
+        private const string CREATE_TABLE_SQL_TEMPLATE = @"
+                CREATE OR ALTER TABLE {0} (
+                    ID NUMBER PRIMARY KEY,
+                    NAME VARCHAR(255) NOT NULL,
+                    EMAIL VARCHAR(255),
+                    PHONE VARCHAR(50),
+                    CREATED_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+                    IS_ACTIVE BOOLEAN DEFAULT TRUE,
+                    BALANCE NUMBER(10,2) DEFAULT 0.00
+                )";
+        private const string INSERT_DATA_SQL_TEMPLATE = @"
+                INSERT INTO {0} (ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES
+                {1}";
+        private const string TRUNCATE_TABLE_SQL_TEMPLATE = "TRUNCATE TABLE IF EXISTS {0}";
+        private const string SELECT_ALL_SQL_TEMPLATE = "SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {0} ORDER BY ID";
+        private const string SELECT_BY_ID_SQL_TEMPLATE = "SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {0} WHERE ID = {1}";
+
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly string _bearerToken;
@@ -37,22 +56,15 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <param name="dataset">Dataset name (defaults to TestData.DefaultDataset)</param>
         public async Task<bool> EnsureTestTableExistsAndSeed(string tableName = null, string dataset = null)
         {
-            // Handle default values inside the method
             tableName = tableName ?? TestData.DefaultTable;
             dataset = dataset ?? TestData.DefaultDataset;
 
             try
             {
-                // First, try to create the table if it doesn't exist
                 await CreateTableIfNotExists(tableName);
-
-                // Clear the table
                 await CleanupTestTable(tableName);
-
-                // Get the test records to seed
+                
                 SeededRecords = SampleTestData.GetDefaultTestRecords();
-
-                // Then seed it with sample data
                 await SeedTableWithSampleData(tableName, SeededRecords);
                 
                 return true;
@@ -74,7 +86,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             {
                 await CreateTableIfNotExists(tableName);
                 await CleanupTestTable(tableName);
-                SeededRecords = new List<TestDataRecord>(records); // Create a copy
+                SeededRecords = new List<TestDataRecord>(records);
                 await SeedTableWithSampleData(tableName, records);
             }
             catch (Exception ex)
@@ -88,17 +100,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// </summary>
         private async Task CreateTableIfNotExists(string tableName)
         {
-            var createTableSql = $@"
-                CREATE OR ALTER TABLE {tableName} (
-                    ID NUMBER PRIMARY KEY,
-                    NAME VARCHAR(255) NOT NULL,
-                    EMAIL VARCHAR(255),
-                    PHONE VARCHAR(50),
-                    CREATED_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-                    IS_ACTIVE BOOLEAN DEFAULT TRUE,
-                    BALANCE NUMBER(10,2) DEFAULT 0.00
-                )";
-
+            var createTableSql = string.Format(CREATE_TABLE_SQL_TEMPLATE, tableName);
             await ExecuteSqlStatement(createTableSql);
         }
 
@@ -107,18 +109,10 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// </summary>
         private async Task SeedTableWithSampleData(string tableName, List<TestDataRecord> records)
         {
-            if (records == null || records.Count == 0)
-            {
-                throw new ArgumentException("No records provided for seeding", nameof(records));
-            }
+            ValidateRecordsForSeeding(records);
 
-            var values = records.Select(r => 
-                $"({r.Id}, '{r.Name.Replace("'", "''")}', '{r.Email}', '{r.Phone}', {(r.IsActive ? "TRUE" : "FALSE")}, {r.Balance})"
-            );
-
-            var seedDataSql = $@"
-                INSERT INTO {tableName} (ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES
-                {string.Join(",\n                ", values)}";
+            var values = GenerateInsertValues(records);
+            var seedDataSql = string.Format(INSERT_DATA_SQL_TEMPLATE, tableName, string.Join(", ", values));
 
             await ExecuteSqlStatement(seedDataSql);
         }
@@ -130,36 +124,11 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         {
             try
             {
-                // Create a new HttpRequestMessage to avoid header conflicts
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/sql");
-                
-                // Add headers to the request message instead of the client
-                request.Headers.Add("Authorization", $"Bearer {_bearerToken}");
-                request.Headers.Add("Instance", TestData.DefaultSnowflakeInstance);
-                request.Headers.Add("Accept", "application/json");
-
-                // Prepare SQL payload with full context like successful test
-                var sqlPayload = new
-                {
-                    statement = sqlStatement,
-                    timeout = TestData.DefaultSqlTimeout,
-                    database = TestData.DefaultDatabase,
-                    schema = TestData.DefaultSchema,
-                    warehouse = TestData.DefaultWarehouse,
-                    role = TestData.DefaultRole
-                };
-
-                var json = JsonConvert.SerializeObject(sqlPayload);
-                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                // Execute SQL using the request message
+                var request = CreateSqlRequest(sqlStatement);
                 var response = await _httpClient.SendAsync(request);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new Exception($"SQL execution failed. Status: {response.StatusCode}, Response: {responseContent}");
-                }
+                ValidateSqlResponse(response, responseContent, sqlStatement);
 
                 return responseContent;
             }
@@ -169,18 +138,87 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             }
         }
 
+        private HttpRequestMessage CreateSqlRequest(string sqlStatement)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}{SQL_ENDPOINT}");
+            
+            AddRequestHeaders(request);
+            AddRequestContent(request, sqlStatement);
+
+            return request;
+        }
+
+        private static void ValidateRecordsForSeeding(List<TestDataRecord> records)
+        {
+            if (records == null || records.Count == 0)
+            {
+                throw new ArgumentException("No records provided for seeding", nameof(records));
+            }
+        }
+
+        private static IEnumerable<string> GenerateInsertValues(List<TestDataRecord> records)
+        {
+            return records.Select(r => 
+                $"({r.Id}, '{EscapeSqlString(r.Name)}', '{r.Email}', '{r.Phone}', {FormatBooleanForSql(r.IsActive)}, {r.Balance})"
+            );
+        }
+
+        private static string EscapeSqlString(string value)
+        {
+            return value.Replace("'", "''");
+        }
+
+        private static string FormatBooleanForSql(bool value)
+        {
+            return value ? "TRUE" : "FALSE";
+        }
+
+        private void AddRequestHeaders(HttpRequestMessage request)
+        {
+            request.Headers.Add("Authorization", $"Bearer {_bearerToken}");
+            request.Headers.Add("Instance", TestData.DefaultSnowflakeInstance);
+            request.Headers.Add("Accept", APPLICATION_JSON);
+        }
+
+        private static void AddRequestContent(HttpRequestMessage request, string sqlStatement)
+        {
+            var sqlPayload = CreateSqlPayload(sqlStatement);
+            var json = JsonConvert.SerializeObject(sqlPayload);
+            request.Content = new StringContent(json, Encoding.UTF8, APPLICATION_JSON);
+        }
+
+        private static object CreateSqlPayload(string sqlStatement)
+        {
+            return new
+            {
+                statement = sqlStatement,
+                timeout = TestData.DefaultSqlTimeout,
+                database = TestData.DefaultDatabase,
+                schema = TestData.DefaultSchema,
+                warehouse = TestData.DefaultWarehouse,
+                role = TestData.DefaultRole
+            };
+        }
+
+        private static void ValidateSqlResponse(HttpResponseMessage response, string responseContent, string sqlStatement)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"SQL execution failed. Status: {response.StatusCode}, Response: {responseContent}");
+            }
+        }
+
         /// <summary>
         /// Cleans up test data by truncating the test table
         /// </summary>
         /// <param name="tableName">Name of the table to cleanup (defaults to TestData.DefaultTable)</param>
         public async Task<bool> CleanupTestTable(string tableName = null)
         {
-            // Handle default value inside the method
             tableName = tableName ?? TestData.DefaultTable;
 
             try
             {
-                var truncateSql = $"TRUNCATE TABLE IF EXISTS {tableName}";
+                var truncateSql = string.Format(TRUNCATE_TABLE_SQL_TEMPLATE, tableName);
                 await ExecuteSqlStatement(truncateSql);
                 return true;
             }
@@ -202,7 +240,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
 
             try
             {
-                var sqlStatement = $"SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {tableName} ORDER BY ID";
+                var sqlStatement = string.Format(SELECT_ALL_SQL_TEMPLATE, tableName);
                 var responseContent = await ExecuteSqlStatement(sqlStatement);
                 
                 return MapSnowflakeResponseToTestDataRecords(responseContent);
@@ -225,7 +263,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
 
             try
             {
-                var sqlStatement = $"SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {tableName} WHERE ID = {id}";
+                var sqlStatement = string.Format(SELECT_BY_ID_SQL_TEMPLATE, tableName, id);
                 var responseContent = await ExecuteSqlStatement(sqlStatement);
                 
                 var records = MapSnowflakeResponseToTestDataRecords(responseContent);
@@ -245,8 +283,6 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <returns>List of TestDataRecord objects</returns>
         private List<TestDataRecord> MapSnowflakeResponseToTestDataRecords(string snowflakeResponse)
         {
-            var records = new List<TestDataRecord>();
-
             try
             {
                 return JsonConvert.DeserializeObject<SnowflakeResponse>(snowflakeResponse).Data.ToList();

@@ -34,7 +34,6 @@ namespace SnowflakeTestApp.Tests.Sql
             HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Query specific seeded customer data with full database context
             var sqlPayload = new
             {
                 statement = $"SELECT NAME, EMAIL, BALANCE FROM {TestData.DefaultTable} WHERE NAME = 'John Doe' OR NAME = 'Jane Smith' ORDER BY NAME",
@@ -175,7 +174,7 @@ namespace SnowflakeTestApp.Tests.Sql
             HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Step 1: Execute SQL statement
+            // Execute SQL statement
             var sqlPayload = new
             {
                 statement = "SELECT 1 as test_column, CURRENT_USER() as current_user",
@@ -198,12 +197,12 @@ namespace SnowflakeTestApp.Tests.Sql
             Assert.IsNotNull(executeData["Data"], "Response should contain data");
             Assert.AreEqual(1, executeData["Data"][0]["TEST_COLUMN"].Value<int>(), "test_column should equal 1");
 
-            // Step 2: Extract statement handle from response
+            // Extract statement handle from response
             var executeResult = JsonConvert.DeserializeObject<JObject>(executeResponseContent);
             string statementHandle = executeResult["Metadata"]["StatementHandle"].ToString();
             Assert.IsFalse(string.IsNullOrEmpty(statementHandle), "Statement handle should be present in response");
 
-            // Step 3: Get results using statement handle
+            // Get results using statement handle
             var getResultsContent = new StringContent("{}", Encoding.UTF8, "application/json");
             var resultsResponse = await HttpClient.PostAsync($"{BaseUrl}/sql/{statementHandle}", getResultsContent);
             
@@ -211,7 +210,7 @@ namespace SnowflakeTestApp.Tests.Sql
             var resultsResponseContent = await resultsResponse.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(resultsResponseContent), "Results response content should not be empty");
 
-            // Step 4: Verify the results contain expected data
+            // Verify the results contain expected data
             var resultsData = JsonConvert.DeserializeObject<JObject>(resultsResponseContent);
             Assert.IsNotNull(resultsData["Data"], "Response should contain data");
             StringAssert.Equals(resultsData["Data"][0], executeData["Data"][0]);
@@ -256,7 +255,7 @@ namespace SnowflakeTestApp.Tests.Sql
             HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Step 1: Execute quick SQL statement that completes immediately
+            // Execute quick SQL statement that completes immediately
             var sqlPayload = new
             {
                 statement = "SELECT 1",
@@ -276,12 +275,12 @@ namespace SnowflakeTestApp.Tests.Sql
             var executeResponseContent = await executeResponse.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(executeResponseContent), "Execute response content should not be empty");
 
-            // Step 2: Extract statement handle from response
+            // Extract statement handle from response
             var executeResult = JsonConvert.DeserializeObject<JObject>(executeResponseContent);
             string statementHandle = executeResult["Metadata"]["StatementHandle"].ToString();
             Assert.IsFalse(string.IsNullOrEmpty(statementHandle), "Statement handle should be present in response");
 
-            // Step 3: Try to cancel already completed statement - should return 422
+            // Try to cancel already completed statement - should return 422
             var cancelContent = new StringContent("{}", Encoding.UTF8, "application/json");
             var cancelResponse = await HttpClient.PostAsync($"{BaseUrl}/sql/{statementHandle}/cancel", cancelContent);
             

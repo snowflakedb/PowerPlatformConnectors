@@ -1,67 +1,167 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using SnowflakeTestApp.Tests.Infrastructure;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace SnowflakeTestApp.Tests
 {
     /// <summary>
-    /// Base class for integration tests that provides common functionality
-    /// Data is seeded once before all tests run
+    /// Base class for integration tests providing common functionality and test data management.
     /// </summary>
     [TestClass]
     public abstract class BaseIntegrationTest
     {
+        private const string PLACEHOLDER_TOKEN_1 = "your-token-here";
+        private const string PLACEHOLDER_TOKEN_2 = "your-actual-bearer-token-here";
+        private const int APPLICATION_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
+        private const string BEARER_TOKEN_CONFIGURATION_ERROR = 
+            "Bearer token not configured. Please update ConnectionParametersProviderMock.TestBearerToken with a valid OAuth bearer token. See README.md for instructions.";
+        private const string APPLICATION_NOT_RUNNING_ERROR = 
+            "SnowflakeTestApp is not running at {0}. Please start the application before running tests. Error: {1}";
+
         protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
         protected static TestDataSeeder DataSeeder;
-
-        /// <summary>
-        /// Gets the test records that were seeded into the database
-        /// Use this in tests to validate against the expected data
-        /// </summary>
         protected static List<TestDataRecord> SeededTestData => DataSeeder?.SeededRecords ?? new List<TestDataRecord>();
+        public TestContext TestContext { get; set; }
 
-        /// <summary>
-        /// Initializes test data once before all tests in the assembly run
-        /// </summary>
         [AssemblyInitialize]
         public static void AssemblyInitialize(TestContext context)
         {
+            InitializeTestDataSeeder();
+            SeedTestData();
+        }
+
+        [AssemblyCleanup]
+        public static void AssemblyCleanup()
+        {
+            CleanupTestResources();
+        }
+
+        [TestInitialize]
+        public virtual void TestInitialize()
+        {
+            HttpClient = CreateHttpClient();
+        }
+
+        [TestCleanup] 
+        public virtual void TestCleanup()
+        {
+            HttpClient?.Dispose();
+        }
+
+        protected string GetTestToken()
+        {
+            var token = TestData.DefaultBearerToken;
+            
+            if (IsPlaceholderToken(token))
+            {
+                Assert.Inconclusive(BEARER_TOKEN_CONFIGURATION_ERROR);
+            }
+            
+            return token;
+        }
+
+        protected void EnsureApplicationIsRunning()
+        {
             try
             {
-                // Get test token for data seeding
-                var token = TestData.DefaultBearerToken;
+                ValidateApplicationHealth();
+            }
+            catch (Exception ex)
+            {
+                Assert.Inconclusive(string.Format(APPLICATION_NOT_RUNNING_ERROR, BaseUrl, ex.Message));
+            }
+        }
+
+        protected T DeserializeResponse<T>(HttpResponseMessage response)
+        {
+            var content = response.Content.ReadAsStringAsync().Result;
+            
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(content);
+            }
+            catch (JsonException ex)
+            {
+                var errorMessage = $"Failed to deserialize response content as {typeof(T).Name}. Content: {content}. Error: {ex.Message}";
+                Assert.Fail(errorMessage);
+                return default(T);
+            }
+        }
+
+        protected StringContent CreateJsonContent(object data)
+        {
+            var json = JsonConvert.SerializeObject(data);
+            return new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        }
+
+        protected async Task<List<TestDataRecord>> FetchActualDataFromDatabase(string tableName = null)
+        {
+            using (var httpClient = CreateHttpClient())
+            {
+                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                return await dataSeeder.FetchTestDataFromDatabase(tableName);
+            }
+        }
+
+        protected async Task<TestDataRecord> FetchActualRecordById(int id, string tableName = null)
+        {
+            using (var httpClient = CreateHttpClient())
+            {
+                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                return await dataSeeder.FetchTestRecordById(id, tableName);
+            }
+        }
+
+        protected void ValidateDataMatches(List<TestDataRecord> expectedRecords, List<TestDataRecord> actualRecords, string message = null)
+        {
+            var assertionMessage = message ?? "Database records should match seeded test data";
+            
+            Assert.AreEqual(expectedRecords.Count, actualRecords.Count, $"{assertionMessage}: Record count mismatch");
+            
+            ValidateIndividualRecords(expectedRecords, actualRecords, assertionMessage);
+        }
+
+        protected void ValidateRecordMatches(TestDataRecord expected, TestDataRecord actual, string message = null)
+        {
+            var assertionMessage = message ?? $"Record with ID {expected?.Id} should match expected values";
+            
+            Assert.IsNotNull(actual, $"{assertionMessage}: Record not found in database");
+            Assert.AreEqual(expected, actual, assertionMessage);
+        }
+
+        private static void InitializeTestDataSeeder()
+        {
+            var token = TestData.DefaultBearerToken;
+            
+            if (IsPlaceholderToken(token))
+            {
+                throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
+            }
+
+            var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
+            };
+            
+            DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
+        }
+
+        private static void SeedTestData()
+        {
+            try
+            {
+                var success = DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset)
+                    .GetAwaiter().GetResult();
                 
-                // Check if the token is configured
-                if (!string.IsNullOrEmpty(token) && 
-                    !token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) &&
-                    !token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
+                if (!success)
                 {
-                    // Initialize HTTP client for data seeding - don't dispose it as DataSeeder will use it
-                    var httpClient = new HttpClient
-                    {
-                        Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
-                    };
-                    
-                    DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
-                    
-                    // Seed test data for the default table
-                    var success = DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset).GetAwaiter().GetResult();
-                    
-                    if (!success)
-                    {
-                        throw new InvalidOperationException($"Failed to setup test table '{TestData.DefaultTable}'");
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
+                    throw new InvalidOperationException($"Failed to setup test table '{TestData.DefaultTable}'");
                 }
             }
             catch (Exception ex)
@@ -70,176 +170,51 @@ namespace SnowflakeTestApp.Tests
             }
         }
 
-        /// <summary>
-        /// Cleans up test data after all tests in the assembly complete
-        /// </summary>
-        [AssemblyCleanup]
-        public static void AssemblyCleanup()
+        private static void CleanupTestResources()
         {
             try
             {
-                if (DataSeeder != null)
-                {
-                    DataSeeder.CleanupTestTable(TestData.DefaultTable).GetAwaiter().GetResult();
-                    DataSeeder.Dispose(); // Dispose the DataSeeder and its HttpClient
-                }
+                DataSeeder?.CleanupTestTable(TestData.DefaultTable).GetAwaiter().GetResult();
+                DataSeeder?.Dispose();
             }
             catch (Exception)
             {
-                // Ignore cleanup errors
+                // Ignore cleanup errors to prevent masking test failures
             }
         }
 
-        [TestInitialize]
-        public virtual void TestInitialize()
+        private static bool IsPlaceholderToken(string token)
         {
-            HttpClient = new HttpClient
+            return string.IsNullOrEmpty(token) || 
+                   token.Equals(PLACEHOLDER_TOKEN_1, StringComparison.OrdinalIgnoreCase) ||
+                   token.Equals(PLACEHOLDER_TOKEN_2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private HttpClient CreateHttpClient()
+        {
+            return new HttpClient
             {
                 Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
             };
         }
 
-        [TestCleanup]
-        public virtual void TestCleanup()
+        private void ValidateApplicationHealth()
         {
-            HttpClient?.Dispose();
-        }
-
-        /// <summary>
-        /// Gets the test token from ConnectionParametersProviderMock
-        /// </summary>
-        protected string GetTestToken()
-        {
-            var token = TestData.DefaultBearerToken;
-            
-            // Check if the token is still the placeholder value
-            if (string.IsNullOrEmpty(token) || 
-                token.Equals("your-token-here", StringComparison.OrdinalIgnoreCase) ||
-                token.Equals("your-actual-bearer-token-here", StringComparison.OrdinalIgnoreCase))
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(APPLICATION_HEALTH_CHECK_TIMEOUT_SECONDS) })
             {
-                Assert.Inconclusive("Bearer token not configured. Please update ConnectionParametersProviderMock.TestBearerToken with a valid OAuth bearer token. " +
-                                   "See README.md for instructions on generating OAuth tokens.");
-            }
-            
-            return token;
-        }
-
-        /// <summary>
-        /// Gets the TestContext for accessing test run information
-        /// </summary>
-        public TestContext TestContext { get; set; }
-
-        /// <summary>
-        /// Helper method to check if the SnowflakeTestApp is running
-        /// </summary>
-        protected void EnsureApplicationIsRunning()
-        {
-            try
-            {
-                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
-                {
-                    var response = client.GetAsync(BaseUrl).Result;
-                    // We don't care about the specific response, just that we can reach the app
-                }
-            }
-            catch (Exception ex)
-            {
-                Assert.Inconclusive($"SnowflakeTestApp is not running at {BaseUrl}. Please start the application before running tests. Error: {ex.Message}");
+                var response = client.GetAsync(BaseUrl).Result;
             }
         }
 
-        /// <summary>
-        /// Helper method to deserialize JSON response content
-        /// </summary>
-        protected T DeserializeResponse<T>(HttpResponseMessage response)
+        private void ValidateIndividualRecords(List<TestDataRecord> expectedRecords, List<TestDataRecord> actualRecords, string assertionMessage)
         {
-            var content = response.Content.ReadAsStringAsync().Result;
-            try
+            foreach (var expected in expectedRecords)
             {
-                return JsonConvert.DeserializeObject<T>(content);
-            }
-            catch (JsonException ex)
-            {
-                Assert.Fail($"Failed to deserialize response content as {typeof(T).Name}. Content: {content}. Error: {ex.Message}");
-                return default(T);
-            }
-        }
-
-        /// <summary>
-        /// Helper method to create JSON content for POST requests
-        /// </summary>
-        protected StringContent CreateJsonContent(object data)
-        {
-            var json = JsonConvert.SerializeObject(data);
-            return new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-        }
-
-        /// <summary>
-        /// Fetches actual data from Snowflake and returns it as TestDataRecord objects
-        /// Use this to validate that the data in the database matches expectations
-        /// </summary>
-        /// <param name="tableName">Optional table name (defaults to the test table)</param>
-        /// <returns>List of TestDataRecord objects from the database</returns>
-        protected async Task<List<TestDataRecord>> FetchActualDataFromDatabase(string tableName = null)
-        {
-            // Create a fresh HttpClient for this operation to avoid disposal issues
-            using (var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds) })
-            {
-                var tempSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
-                return await tempSeeder.FetchTestDataFromDatabase(tableName);
-            }
-        }
-
-        /// <summary>
-        /// Fetches a specific record by ID from Snowflake
-        /// </summary>
-        /// <param name="id">ID of the record to fetch</param>
-        /// <param name="tableName">Optional table name (defaults to the test table)</param>
-        /// <returns>TestDataRecord if found, null otherwise</returns>
-        protected async Task<TestDataRecord> FetchActualRecordById(int id, string tableName = null)
-        {
-            // Create a fresh HttpClient for this operation to avoid disposal issues
-            using (var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds) })
-            {
-                var tempSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
-                return await tempSeeder.FetchTestRecordById(id, tableName);
-            }
-        }
-
-        /// <summary>
-        /// Validates that the actual data from database matches the expected seeded data
-        /// </summary>
-        /// <param name="expectedRecords">Expected records (usually from SeededTestData)</param>
-        /// <param name="actualRecords">Actual records from database</param>
-        /// <param name="message">Optional custom assertion message</param>
-        protected void ValidateDataMatches(List<TestDataRecord> expectedRecords, List<TestDataRecord> actualRecords, string message = null)
-        {
-            message = message ?? "Database records should match seeded test data";
-            
-            Assert.AreEqual(expectedRecords.Count, actualRecords.Count, $"{message}: Record count mismatch");
-            
-            for (int i = 0; i < expectedRecords.Count; i++)
-            {
-                var expected = expectedRecords[i];
                 var actual = actualRecords.FirstOrDefault(r => r.Id == expected.Id);
                 
-                Assert.IsNotNull(actual, $"{message}: Record with ID {expected.Id} not found in database");
-                Assert.AreEqual(expected, actual, $"{message}: Record with ID {expected.Id} does not match expected values");
+                Assert.IsNotNull(actual, $"{assertionMessage}: Record with ID {expected.Id} not found in database");
+                Assert.AreEqual(expected, actual, $"{assertionMessage}: Record with ID {expected.Id} does not match expected values");
             }
-        }
-
-        /// <summary>
-        /// Validates that a single record matches the expected values
-        /// </summary>
-        /// <param name="expected">Expected record</param>
-        /// <param name="actual">Actual record from database</param>
-        /// <param name="message">Optional custom assertion message</param>
-        protected void ValidateRecordMatches(TestDataRecord expected, TestDataRecord actual, string message = null)
-        {
-            message = message ?? $"Record with ID {expected?.Id} should match expected values";
-            
-            Assert.IsNotNull(actual, $"{message}: Record not found in database");
-            Assert.AreEqual(expected, actual, message);
         }
     }
 } 

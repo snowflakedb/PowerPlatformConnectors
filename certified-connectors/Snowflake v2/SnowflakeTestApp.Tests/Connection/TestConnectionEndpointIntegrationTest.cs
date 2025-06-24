@@ -1,19 +1,23 @@
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Net;
 
 namespace SnowflakeTestApp.Tests.Connection
 {
     /// <summary>
     /// Integration tests for the /testconnection endpoint.
-    /// These tests document the expected behavior and can be used to verify the endpoint manually.
-    /// Based on actual API testing, the endpoint currently returns 500 Internal Server Error
-    /// for both authenticated and unauthenticated requests, indicating potential configuration issues.
     /// </summary>
     [TestClass]
     public class TestConnectionEndpointIntegrationTest : BaseIntegrationTest
     {
+        private const string TEST_CONNECTION_ENDPOINT = "/testconnection";
+        private const string INVALID_TOKEN = "invalid-token";
+        private const string MALFORMED_AUTH_HEADER = "InvalidFormat";
+        private const string BEARER_TOKEN_MISSING_ERROR = "Bearer token is missing in the HTTP request authorization header.";
+        private const string INVALID_OAUTH_TOKEN_ERROR = "Invalid OAuth access token.";
+        private const string POST_METHOD_NOT_ALLOWED_ERROR = "The requested resource does not support http method 'POST'.";
+
         [TestInitialize]
         public override void TestInitialize()
         {
@@ -27,12 +31,12 @@ namespace SnowflakeTestApp.Tests.Connection
         /// This may indicate Snowflake connection configuration issues that need to be resolved
         /// </summary>
         [TestMethod]
-        public async Task TestConnectionEndpoint_WithAuth_ReturnsOK()
+        public async Task TestConnectionEndpoint_WithValidAuth_ReturnsOK()
         {
             var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            AddAuthorizationHeader(testToken);
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
+            var response = await HttpClient.GetAsync($"{BaseUrl}{TEST_CONNECTION_ENDPOINT}");
             
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
@@ -44,11 +48,11 @@ namespace SnowflakeTestApp.Tests.Connection
         [TestMethod]
         public async Task TestConnectionEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
+            var response = await HttpClient.GetAsync($"{BaseUrl}{TEST_CONNECTION_ENDPOINT}");
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Bearer token is missing in the HTTP request authorization header.");
+            StringAssert.Contains(content, BEARER_TOKEN_MISSING_ERROR);
         }
 
         /// <summary>
@@ -58,13 +62,13 @@ namespace SnowflakeTestApp.Tests.Connection
         [TestMethod]
         public async Task TestConnectionEndpoint_WithInvalidAuth_ReturnsInternalServerError()
         {
-            HttpClient.DefaultRequestHeaders.Add("Authorization", "Bearer invalid-token");
+            AddAuthorizationHeader(INVALID_TOKEN);
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
+            var response = await HttpClient.GetAsync($"{BaseUrl}{TEST_CONNECTION_ENDPOINT}");
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Invalid OAuth access token.");
+            StringAssert.Contains(content, INVALID_OAUTH_TOKEN_ERROR);
         }
 
         /// <summary>
@@ -74,13 +78,13 @@ namespace SnowflakeTestApp.Tests.Connection
         [TestMethod]
         public async Task TestConnectionEndpoint_WithMalformedAuth_ReturnsInternalServerError()
         {
-            HttpClient.DefaultRequestHeaders.Add("Authorization", "InvalidFormat");
+            HttpClient.DefaultRequestHeaders.Add("Authorization", MALFORMED_AUTH_HEADER);
 
-            var response = await HttpClient.GetAsync($"{BaseUrl}/testconnection");
+            var response = await HttpClient.GetAsync($"{BaseUrl}{TEST_CONNECTION_ENDPOINT}");
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-            StringAssert.Contains(content, "Connection creation failed. Snowflake Error : Invalid OAuth access token.");
+            StringAssert.Contains(content, INVALID_OAUTH_TOKEN_ERROR);
         }
 
         /// <summary>
@@ -90,13 +94,18 @@ namespace SnowflakeTestApp.Tests.Connection
         public async Task TestConnectionEndpoint_WithPOST_ReturnsMethodNotAllowed()
         {
             var testToken = GetTestToken();
-            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            AddAuthorizationHeader(testToken);
 
-            var response = await HttpClient.PostAsync($"{BaseUrl}/testconnection", new StringContent(""));
+            var response = await HttpClient.PostAsync($"{BaseUrl}{TEST_CONNECTION_ENDPOINT}", new StringContent(""));
             var content = await response.Content.ReadAsStringAsync();
 
             Assert.AreEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
-            StringAssert.Contains(content, "The requested resource does not support http method 'POST'.");
+            StringAssert.Contains(content, POST_METHOD_NOT_ALLOWED_ERROR);
+        }
+
+        private void AddAuthorizationHeader(string token)
+        {
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
         }
     }
 } 

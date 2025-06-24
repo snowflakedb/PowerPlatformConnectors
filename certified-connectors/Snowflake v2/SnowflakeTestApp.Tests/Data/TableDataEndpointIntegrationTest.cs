@@ -46,14 +46,11 @@ namespace SnowflakeTestApp.Tests.Data
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
 
-            // Deserialize the OData response
             var customers = JsonConvert.DeserializeObject<ODataResponse<TestDataRecord>>(content).Value;
             
-            // Validate against seeded data
             Assert.AreEqual(SeededTestData.Count, customers.Count, "API should return the same number of records as seeded data");
 
-            // Get the first inactive record from seeded data for validation
-            var expectedInactiveRecord = SeededTestData.FirstOrDefault(r => !r.IsActive && r.Balance < 1000.00m);
+            var expectedInactiveRecord = SeededTestData.FirstOrDefault(r => !r.IsActive && r.Balance > 100.00m);
             Assert.IsNotNull(expectedInactiveRecord, "Should have at least one inactive record in seeded data");
             
             var actualInactiveRecord = customers.FirstOrDefault(r => r.Id == expectedInactiveRecord.Id);
@@ -97,21 +94,17 @@ namespace SnowflakeTestApp.Tests.Data
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
 
-            // Deserialize the single item response
             var customerItem = JsonConvert.DeserializeObject<TestDataRecord>(content);
             Assert.IsNotNull(customerItem, "Customer item should not be null");
 
-            // Validate the record matches seeded data
             ValidateRecordMatches(expectedRecord, customerItem, "Single item API response");
 
-            // Additional validations using seeded data values
             Assert.AreEqual(expectedRecord.Name, customerItem.Name, $"Should be {expectedRecord.Name} record");
             Assert.AreEqual(expectedRecord.Email, customerItem.Email, "Should have correct email from seeded data");
             Assert.AreEqual(expectedRecord.Phone, customerItem.Phone, "Should have correct phone from seeded data");
             Assert.AreEqual(expectedRecord.IsActive, customerItem.IsActive, "Active status should match seeded data");
             Assert.AreEqual(expectedRecord.Balance, customerItem.Balance, "Should have correct balance from seeded data");
 
-            // Validate additional fields from API response
             Assert.IsNotNull(customerItem.CreatedDate, "CREATED_DATE should be present");
         }
 
@@ -122,7 +115,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task GetItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            // Use the second record from seeded data for this test
             var testRecord = SeededTestData.Skip(1).FirstOrDefault();
             Assert.IsNotNull(testRecord, "Should have at least 2 records in seeded data");
 
@@ -140,7 +132,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task CreateItemEndpoint_WithAuth_ReturnsCreated()
         {
-            // Use the highest balance record as a template for creating a new record
             var templateRecord = SeededTestData.OrderByDescending(r => r.Balance).FirstOrDefault();
             Assert.IsNotNull(templateRecord, "Should have seeded data to use as template");
 
@@ -148,7 +139,6 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // Create new record with dynamic values based on template
             var newId = SeededTestData.Max(r => r.Id) + 50;
             var newItem = new TestDataRecord(
                 newId, 
@@ -192,7 +182,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task UpdateItemEndpoint_WithAuth_ReturnsOk()
         {
-            // Use the third record from seeded data for this update test
             var recordToUpdate = SeededTestData.Skip(2).FirstOrDefault();
             Assert.IsNotNull(recordToUpdate, "Should have at least 3 records in seeded data");
 
@@ -206,8 +195,8 @@ namespace SnowflakeTestApp.Tests.Data
                 NAME = $"Updated {recordToUpdate.Name}",
                 EMAIL = recordToUpdate.Email.Replace("@", "+updated@"),
                 PHONE = recordToUpdate.Phone,
-                IS_ACTIVE = !recordToUpdate.IsActive, // Flip the active status
-                BALANCE = recordToUpdate.Balance + 500.00m // Add 500 to original balance
+                IS_ACTIVE = !recordToUpdate.IsActive, 
+                BALANCE = recordToUpdate.Balance + 500.00m
             };
 
             var json = JsonConvert.SerializeObject(updatedItem);
@@ -225,7 +214,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task UpdateItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            // Use the last record from seeded data for this test
             var testRecord = SeededTestData.LastOrDefault();
             Assert.IsNotNull(testRecord, "Should have seeded data available");
 
@@ -245,7 +233,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task DeleteItemEndpoint_WithAuth_ReturnsOk()
         {
-            // Use the record with the lowest balance for deletion test
             var recordToDelete = SeededTestData.OrderBy(r => r.Balance).FirstOrDefault();
             Assert.IsNotNull(recordToDelete, "Should have seeded data with balance information");
 
@@ -265,7 +252,6 @@ namespace SnowflakeTestApp.Tests.Data
         [TestMethod]
         public async Task DeleteItemEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
-            // Use a middle record from seeded data for this test (to diversify from other tests)
             var testRecord = SeededTestData.Skip(SeededTestData.Count / 2).FirstOrDefault();
             Assert.IsNotNull(testRecord, "Should have seeded data available");
 
@@ -312,7 +298,6 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             
-            // Test active records filter
             var activeResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq true");
             Assert.AreEqual(System.Net.HttpStatusCode.OK, activeResponse.StatusCode, "Active filter should succeed");
             
@@ -320,10 +305,8 @@ namespace SnowflakeTestApp.Tests.Data
             var activeData = JsonConvert.DeserializeObject<ODataResponse<TestDataRecord>>(activeContent);
             Assert.IsNotNull(activeData?.Value, "Active filter response should contain data");
             
-            // Validate all returned records are actually active
             Assert.IsTrue(activeData.Value.All(item => item.IsActive), "All filtered records should be active");
 
-            // Test inactive records filter
             var inactiveResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items?$filter=IS_ACTIVE eq false");
             Assert.AreEqual(System.Net.HttpStatusCode.OK, inactiveResponse.StatusCode, "Inactive filter should succeed");
             
@@ -332,7 +315,6 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.IsNotNull(inactiveData?.Value, "Inactive filter response should contain data");
             Assert.IsTrue(inactiveData.Value.Count > 0, $"Should return some inactive records");
             
-            // Validate all returned records are actually inactive
             Assert.IsTrue(inactiveData.Value.All(item => !item.IsActive), "All filtered records should be inactive");
         }
 
@@ -346,7 +328,7 @@ namespace SnowflakeTestApp.Tests.Data
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // 1. CREATE: Create a new record based on seeded template
+            // 1. Create a new record based on seeded template
             var templateRecord = SeededTestData.OrderBy(r => r.Balance).FirstOrDefault();
             var newId = SeededTestData.Max(r => r.Id) + 200;
             
@@ -362,7 +344,7 @@ namespace SnowflakeTestApp.Tests.Data
             var createdRecord = await FetchActualRecordById(newId);
             ValidateRecordMatches(newRecord, createdRecord, "Created record should match input");
 
-            // 2. READ: Verify we can retrieve the created record via API
+            // 2. Verify we can retrieve the created record via API
             var readResponse = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
             Assert.AreEqual(System.Net.HttpStatusCode.OK, readResponse.StatusCode, "Read should succeed");
             
@@ -370,7 +352,7 @@ namespace SnowflakeTestApp.Tests.Data
             var apiRecord = JsonConvert.DeserializeObject<TestDataRecord>(readContent);
             ValidateRecordMatches(newRecord, apiRecord, "API read should return correct data");
 
-            // 3. UPDATE: Modify the record
+            // 3. Modify the record
             var updatedRecord = new TestDataRecord(newId, $"Modified {newRecord.Name}", 
                 newRecord.Email.Replace("+test@", "+updated@"), newRecord.Phone, 
                 !newRecord.IsActive, newRecord.Balance + 500m);
@@ -383,7 +365,7 @@ namespace SnowflakeTestApp.Tests.Data
             var modifiedRecord = await FetchActualRecordById(newId);
             ValidateRecordMatches(updatedRecord, modifiedRecord, "Updated record should match new values");
 
-            // 4. DELETE: Remove the record
+            // 4. Remove the record
             var deleteResponse = await HttpClient.DeleteAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('{TestTable}')/items('{newId}')");
             Assert.AreEqual(System.Net.HttpStatusCode.OK, deleteResponse.StatusCode, "Delete should succeed");
 
