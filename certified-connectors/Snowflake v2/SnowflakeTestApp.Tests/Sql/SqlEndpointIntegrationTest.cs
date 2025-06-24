@@ -213,7 +213,7 @@ namespace SnowflakeTestApp.Tests.Sql
             // Verify the results contain expected data
             var resultsData = JsonConvert.DeserializeObject<JObject>(resultsResponseContent);
             Assert.IsNotNull(resultsData["Data"], "Response should contain data");
-            StringAssert.Equals(resultsData["Data"][0], executeData["Data"][0]);
+            Assert.IsTrue(JToken.DeepEquals(resultsData["Data"][0], executeData["Data"][0]), "The SQL results do not match the expected data.");
         }
         
         /// <summary>

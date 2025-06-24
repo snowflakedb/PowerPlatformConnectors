@@ -52,7 +52,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithoutAuth_ReturnsNotFound()
+        public async Task GetTableMetadataEndpoint_WithoutAuth_ReturnsInternalServerError()
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets/default/tables/CUSTOMERS");
             
@@ -65,7 +65,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         /// Test the /$metadata.json/datasets/{dataset}/tables/{table} endpoint with invalid table
         /// </summary>
         [TestMethod]
-        public async Task GetTableMetadataEndpoint_WithInvalidTable_ReturnsBadRequest()
+        public async Task GetTableMetadataEndpoint_WithInvalidTable_ReturnsInternalServerError()
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");

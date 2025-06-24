@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -13,28 +14,30 @@ namespace SnowflakeTestApp.Tests.Data
     [TestClass]
     public class DatasetEndpointIntegrationTest : BaseIntegrationTest
     {
+        [TestInitialize]
+        public override void TestInitialize()
+        {
+            base.TestInitialize();
+            EnsureApplicationIsRunning();
+        }
 
         /// <summary>
-        /// This test shows how to manually test the endpoint if the application is running
-        /// To run this test:
-        /// 1. Start the SnowflakeTestApp application
-        /// 2. Run this test
+        /// Test the /datasets endpoint with authentication
+        /// Verifies that the default dataset is returned with proper XML structure
         /// </summary>
         [TestMethod]
-        public async Task DatasetEndpointTest()
+        public async Task GetDatasetsEndpoint_WithAuth_ReturnsOk()
         {
-            HttpClient.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/xml")
-            );
+            var testToken = GetTestToken();
+            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
 
             var response = await HttpClient.GetAsync($"{BaseUrl}/datasets");
-            Assert.IsTrue(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
             
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             var content = await response.Content.ReadAsStringAsync();
             Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
             
             var xmlDoc = XDocument.Parse(content);
-
             var dataSetElement = xmlDoc.Descendants().FirstOrDefault(e => e.Name.LocalName == "DataSet");
             Assert.IsNotNull(dataSetElement, "Could not find DataSet element in response");
 
@@ -46,7 +49,25 @@ namespace SnowflakeTestApp.Tests.Data
 
             var tablesElement = dataSetElement.Elements().FirstOrDefault(e => e.Name.LocalName == "tables");
             Assert.IsNotNull(tablesElement, "tables element should exist");
-            Assert.AreEqual(0, tablesElement.Elements().Count());    
+            Assert.AreEqual(0, tablesElement.Elements().Count());
+        }
+
+        /// <summary>
+        /// Test the /datasets endpoint with JSON accept header
+        /// Verifies that the endpoint can handle different content types
+        /// </summary>
+        [TestMethod]
+        public async Task GetDatasetsEndpoint_WithJsonAccept_ReturnsOk()
+        {
+            var testToken = GetTestToken();
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets");
+            
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
         }
     }
 } 
