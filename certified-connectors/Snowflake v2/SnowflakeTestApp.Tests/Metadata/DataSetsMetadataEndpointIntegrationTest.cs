@@ -40,7 +40,7 @@ namespace SnowflakeTestApp.Tests.Metadata
         /// Based on actual API testing, returns 404 Not Found (not 500 Internal Server Error)
         /// </summary>
         [TestMethod]
-        public async Task GetDataSetMetadataEndpoint_WithoutAuth_ReturnsNotFound()
+        public async Task GetDataSetMetadataEndpoint_WithoutAuth_ReturnsOk()
         {
             var response = await HttpClient.GetAsync($"{BaseUrl}/$metadata.json/datasets");
             
