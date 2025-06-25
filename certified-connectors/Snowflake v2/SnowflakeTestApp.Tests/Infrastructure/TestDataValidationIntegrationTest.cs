@@ -26,10 +26,8 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         [ClassInitialize]
         public static async Task ClassInitialize(TestContext context)
         {
-            // Ensure we have a valid data seeder from the base class
             if (DataSeeder != null)
             {
-                // Seed fresh test data specifically for this test class
                 await DataSeeder.EnsureTestTableExistsAndSeed(TestData.DefaultTable, TestData.DefaultDataset);
             }
         }
@@ -47,7 +45,6 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         [TestMethod]
         public async Task FetchTestDataFromDatabase_ShouldReturnMappedRecords()
         {
-            // Fetch data from the database
             var actualRecords = await FetchActualDataFromDatabase();
             
             AssertRecordsAreNotNullOrEmpty(actualRecords);
@@ -60,13 +57,11 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         [TestMethod]
         public async Task FetchTestRecordById_ShouldReturnCorrectRecord()
         {
-            // Fetch a specific record
             var actualRecord = await FetchActualRecordById(EXPECTED_FIRST_RECORD_ID);
             
             Assert.IsNotNull(actualRecord, "Record with ID 1 should exist");
             Assert.AreEqual(EXPECTED_FIRST_RECORD_ID, actualRecord.Id, "Retrieved record should have correct ID");
             
-            // Get the expected record from seeded data
             var expectedRecord = SeededTestData.FirstOrDefault(r => r.Id == EXPECTED_FIRST_RECORD_ID);
             ValidateRecordMatches(expectedRecord, actualRecord, "Fetched record should match seeded data");
         }
@@ -77,16 +72,12 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         [TestMethod]
         public async Task ValidateCompleteDataset_ShouldMatchSeededData()
         {
-            // Fetch all records from database
             var actualRecords = await FetchActualDataFromDatabase();
             
-            // Validate against seeded data
             ValidateDataMatches(SeededTestData, actualRecords, "Complete dataset validation");
             
-            // Additional validations
             Assert.AreEqual(SeededTestData.Count, actualRecords.Count, "Record counts should match");
             
-            // Validate specific known records
             ValidateSpecificKnownRecords(actualRecords);
         }
 
@@ -126,7 +117,6 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         [TestMethod]
         public async Task FetchNonExistentRecord_ShouldReturnNull()
         {
-            // Try to fetch a record that doesn't exist
             var nonExistentRecord = await FetchActualRecordById(NON_EXISTENT_RECORD_ID);
             
             Assert.IsNull(nonExistentRecord, "Non-existent record should return null");
