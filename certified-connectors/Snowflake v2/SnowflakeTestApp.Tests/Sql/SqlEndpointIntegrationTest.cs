@@ -31,7 +31,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
             var sqlPayload = new
@@ -62,7 +62,7 @@ namespace SnowflakeTestApp.Tests.Sql
         [TestMethod]
         public async Task ExecuteSqlStatementEndpoint_WithoutAuth_ReturnsBadRequest()
         {
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
             var sqlPayload = new
@@ -115,7 +115,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
 
             var sqlPayload = new
             {
@@ -143,7 +143,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
             var sqlPayload = new
@@ -172,7 +172,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
             // Execute SQL statement
@@ -253,7 +253,7 @@ namespace SnowflakeTestApp.Tests.Sql
         {
             var testToken = GetTestToken();
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
-            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeInstance);
+            HttpClient.DefaultRequestHeaders.Add("Instance", TestData.DefaultSnowflakeHostname);
             HttpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
             // Execute quick SQL statement that completes immediately

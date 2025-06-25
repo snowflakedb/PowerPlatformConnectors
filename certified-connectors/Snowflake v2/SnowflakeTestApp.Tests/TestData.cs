@@ -14,11 +14,11 @@ namespace SnowflakeTestApp.Tests
         public const int DefaultSqlTimeout = 10;
         public const string SampleSqlStatement = "SELECT 1 as test_column, CURRENT_TIMESTAMP() as current_time, CURRENT_USER() as current_user";
 
-        public static string DefaultSnowflakeInstance => ConnectionParametersProviderMock.TestSnowflakeInstance;
-        public static string DefaultDatabase => ConnectionParametersProviderMock.TestDatabase;
-        public static string DefaultSchema => ConnectionParametersProviderMock.TestSchema;
-        public static string DefaultWarehouse => ConnectionParametersProviderMock.TestWarehouse;
-        public static string DefaultRole => ConnectionParametersProviderMock.TestRole;
-        public static string DefaultBearerToken => ConnectionParametersProviderMock.TestBearerToken;
+        public static string DefaultSnowflakeHostname = "your-account.region.cloud-provider.snowflakecomputing.com";
+        public static string DefaultDatabase => "DATAVERSE";
+        public static string DefaultSchema => "PUBLIC";
+        public static string DefaultWarehouse => "XSMALL";
+        public static string DefaultRole => "SYSADMIN";
+        public static string DefaultBearerToken => "your-oauth-bearer-token-here";
     }
 } 

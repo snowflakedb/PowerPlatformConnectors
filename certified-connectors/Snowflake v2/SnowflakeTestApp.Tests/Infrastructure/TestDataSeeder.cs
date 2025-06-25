@@ -25,9 +25,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
                     IS_ACTIVE BOOLEAN DEFAULT TRUE,
                     BALANCE NUMBER(10,2) DEFAULT 0.00
                 )";
-        private const string INSERT_DATA_SQL_TEMPLATE = @"
-                INSERT INTO {0} (ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES
-                {1}";
+        private const string INSERT_DATA_SQL_TEMPLATE = "INSERT INTO {0} (ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE) VALUES {1}";
         private const string TRUNCATE_TABLE_SQL_TEMPLATE = "TRUNCATE TABLE IF EXISTS {0}";
         private const string SELECT_ALL_SQL_TEMPLATE = "SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {0} ORDER BY ID";
         private const string SELECT_BY_ID_SQL_TEMPLATE = "SELECT ID, NAME, EMAIL, PHONE, IS_ACTIVE, BALANCE FROM {0} WHERE ID = {1}";
@@ -176,7 +174,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         private void AddRequestHeaders(HttpRequestMessage request)
         {
             request.Headers.Add("Authorization", $"Bearer {_bearerToken}");
-            request.Headers.Add("Instance", TestData.DefaultSnowflakeInstance);
+            request.Headers.Add("Instance", TestData.DefaultSnowflakeHostname);
             request.Headers.Add("Accept", APPLICATION_JSON);
         }
 

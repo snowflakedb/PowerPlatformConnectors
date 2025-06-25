@@ -33,84 +33,112 @@ Each test file includes both positive (with authentication) and negative (withou
 
 ## Quick Start
 
+### Prerequisites
+
+Before running tests, ensure you have:
+- .NET SDK installed
+- Valid Snowflake account credentials
+- OAuth bearer token (see "Generating OAuth Tokens" section below)
+
 ### Method 1: Visual Studio (Recommended)
 
 1. **Open Solution**
    - Launch Visual Studio
-   - Open `dirs.sln` in `Snowflake V2` directory
+   - Open `dirs.sln` in the `Snowflake V2` directory
 
-2. **Start Application**
-   - Run the application
+2. **Configure Test Settings**
+   - Update `TestData.cs` and `ConnectionParametersProviderMock.cs` with your Snowflake connection details
+   - Set `DefaultBearerToken` with your OAuth token
+
+3. **Start Application**
+   - Set `SnowflakeTestApp` as the startup project
+   - Run the application (F5 or Ctrl+F5)
    - Verify it's accessible at `https://localhost:44362`
 
-3. **Run Tests**
-   - Open **Test Explorer**
-   - Click **Run All Tests** 
-   - View results in Test Explorer
+4. **Run Tests**
+   - Open **Test Explorer** (Test → Test Explorer)
+   - Click **Run All Tests** to run the entire test suite
+   - View results and detailed output in Test Explorer
 
 ### Method 2: Command Line
 
-1. **Start Application**
+1. **Configure Test Settings** (One-time setup)
+   ```bash
+   # Edit TestData.cs to set your configuration
+   # Update DefaultBearerToken and connection parameters
+   ```
+
+2. **Start Application**
    ```bash
    # Build and run the app
    dotnet build
    dotnet run --project SnowflakeTestApp
    ```
 
-2. **Run Tests** (in a new terminal)
+3. **Run Tests** (in a new terminal)
    ```bash
    # Run all tests
    dotnet test
    
-   # Or run specific test project
+   # Run specific test project
    dotnet test SnowflakeTestApp.Tests/SnowflakeTestApp.Tests.csproj
+   
+   # Run tests with detailed output
+   dotnet test --logger "console;verbosity=detailed"
+   
+   # Run specific test class
+   dotnet test --filter "FullyQualifiedName~SqlEndpointIntegrationTest"
    ```
 
-## Setting Up Bearer Token for Tests
+## Configuration Setup
 
-Some integration tests require authentication with a valid bearer token. To set this up:
+### 1. Update Test Configuration
 
-### 1. Update TestConfiguration
-
-Open the `TestConfiguration.cs` file in the `SnowflakeTestApp.Tests` project and update the `BearerToken` property with your actual OAuth bearer token:
+The test configuration is centralized in the `TestData.cs` file. Update the following constants with your Snowflake environment details:
 
 ```csharp
-/// <summary>
-/// Bearer token for test authentication
-/// </summary>
-public static string BearerToken => "your-actual-bearer-token-here";
+public static class TestData
+{
+    // Application URL (usually doesn't need to change)
+    public const string BaseUrl = "https://localhost:44362";
+    
+    // Snowflake Connection Details - UPDATE THESE
+    public static string DefaultSnowflakeHostname = "your-account.region.cloud-provider.snowflakecomputing.com";
+    public static string DefaultDatabase => "DATAVERSE";
+    public static string DefaultSchema => "PUBLIC";
+    public static string DefaultWarehouse => "XSMALL";
+    public static string DefaultRole => "SYSADMIN";
+    
+    // Authentication - UPDATE THIS
+    public static string DefaultBearerToken => "your-oauth-bearer-token-here";
+    
+    // Test Data Configuration
+    public const string DefaultDataset = "default";
+    public const string DefaultTable = "CUSTOMERS";
+}
 ```
 
-Replace `"your-actual-bearer-token-here"` with your actual OAuth bearer token. You can obtain this token by following the "Generating OAuth Tokens" section below.
+### 2. Connection Parameters
 
-### 2. Example File Structure
-
-Your test directory should look like this:
-```
-SnowflakeTestApp.Tests/
-├── TestConfiguration.cs       ← Contains BearerToken configuration
-├── BaseIntegrationTest.cs     ← Base class for all integration tests
-├── DatasetEndpointIntegrationTest.cs
-├── DataSetsMetadataEndpointIntegrationTest.cs
-├── SqlEndpointIntegrationTest.cs
-├── TableDataEndpointIntegrationTest.cs
-├── TableEndpointIntegrationTest.cs
-├── TableMetadataEndpointIntegrationTest.cs
-├── TestConnectionEndpointIntegrationTest.cs
-├── TriggerEndpointIntegrationTest.cs
-└── ...
-```
+The mock connection parameters are defined in `ConnectionParametersProviderMock.cs`. These should match your `TestData.cs` configuration to ensure consistency across all tests.
 
 ### 3. Security Notes
 
-- Never commit actual tokens to version control
+- **Never commit actual tokens to version control**
 - Consider using environment variables or user secrets for production scenarios
-- The bearer token is stored directly in the TestConfiguration class for simplicity during development
+- The bearer token is stored in TestData class for development convenience
+- Ensure your test account has appropriate permissions for the specified database, schema, and warehouse
 
 ## Troubleshooting
 
-- **Test fails**: Ensure SnowflakeTestApp is running at `https://localhost:44362`
-- **Connection issues**: Check that the application started successfully without errors
+### Common Issues
+
+- **"Test fails with 401 Unauthorized"**: Check that your bearer token is valid and not expired
+- **"Connection refused to localhost:44362"**: Ensure SnowflakeTestApp is running before executing tests
+- **"Table not found" errors**: Verify your database and schema configuration in TestData.cs
+- **"Warehouse not found" errors**: Confirm the warehouse name exists and your account has access
+- **SSL/TLS errors**: Make sure you're using the correct Snowflake hostname format
+
 
 ## Generating OAuth Tokens
 
@@ -226,24 +254,29 @@ curl -X POST \
 - Use refresh tokens to maintain long-term access without user re-authentication
 - Always use HTTPS for production redirect URIs
 
-## Data Seeding Infrastructure
+## Test Data Infrastructure
 
-The test project includes automatic data seeding functionality for tests that need test data:
+The test project includes comprehensive data seeding functionality for tests that require sample data:
 
 ### Base Classes
-- **`BaseIntegrationTest`**: Basic test functionality without data seeding
-- **`BaseIntegrationTestWithDataSeeding`**: Automatically creates and seeds test tables before running tests
 
-### Test Data Seeding
-Tests that inherit from `BaseIntegrationTestWithDataSeeding` will automatically:
-1. Create a `CUSTOMERS` table if it doesn't exist
-2. Seed it with 10 sample customer records
-3. Make the seeded data available for testing
+- **`BaseIntegrationTest`**: Basic test functionality without automatic data seeding
 
-### Sample Seeded Data Structure
+### TestDataSeeder Class
+
+The `TestDataSeeder` class in the `Infrastructure` folder handles:
+- Creating test tables with proper schema
+- Seeding tables with sample data
+- Cleaning up test data between tests
+- Providing access to seeded records for validation
+
+### Default Test Table Schema
+
+Tests using data seeding will automatically create a `CUSTOMERS` table with this structure:
+
 ```sql
-CREATE TABLE CUSTOMERS (
-    ID NUMBER AUTOINCREMENT PRIMARY KEY,
+CREATE OR ALTER TABLE CUSTOMERS (
+    ID NUMBER PRIMARY KEY,
     NAME VARCHAR(255) NOT NULL,
     EMAIL VARCHAR(255),
     PHONE VARCHAR(50),
@@ -253,51 +286,110 @@ CREATE TABLE CUSTOMERS (
 )
 ```
 
-Sample records include customers like:
+### Sample Test Data
+
+The seeder creates 10 sample customer records including:
 - John Doe (john.doe@example.com, $1,500.50)
 - Jane Smith (jane.smith@example.com, $2,750.00)
 - Bob Johnson (bob.johnson@example.com, $890.25)
-- And 7 more test customers...
+- And 7 additional test customers...
 
 ### Using Data Seeding in Tests
+
 ```csharp
 [TestClass]
 public class MyDataTest : BaseIntegrationTestWithDataSeeding
 {
     [TestMethod]
-    public async Task MyTest()
+    public async Task TestWithSeededData()
     {
-        RequireTestData(); // Ensures test data is available
+        // RequireTestData() ensures test data is available
+        RequireTestData();
         
-        // Your test code here - can use the seeded CUSTOMERS table
+        // Access seeded records for validation
+        var expectedRecords = TestDataSeeder.SeededRecords;
+        Assert.AreEqual(10, expectedRecords.Count);
+        
+        // Test your endpoint with seeded data
         var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('default')/tables('CUSTOMERS')/items");
-        // ... test assertions
+        response.EnsureSuccessStatusCode();
+        
+        // Validate response against seeded data
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.IsTrue(content.Contains("John Doe"));
     }
 }
 ```
 
-### Customizing Test Tables
-Override the `TestTables` property to specify different tables:
+### Custom Test Data
+
+Override the seeding behavior for specific test needs:
+
 ```csharp
-protected override string[] TestTables => new[] { "PRODUCTS", "ORDERS" };
+[TestMethod]
+public async Task TestWithCustomData()
+{
+    var customRecords = new List<TestDataRecord>
+    {
+        new TestDataRecord { Id = 1, Name = "Custom User", Email = "custom@test.com", Balance = 100.00m }
+    };
+    
+    await TestDataSeeder.SeedCustomTestData("CUSTOMERS", customRecords);
+    
+    // Your test code here
+}
 ```
 
-### Development Guidelines
+### Data Cleanup
 
-#### Test Categories
-- **Connection Tests**: Verify connection and authentication
-- **Data Tests**: Test CRUD operations on tables and datasets (with seeded data)
-- **Metadata Tests**: Test schema and metadata retrieval
-- **SQL Tests**: Test direct SQL execution (with seeded data)
-- **Trigger Tests**: Test webhook and trigger functionality
+Tests inheriting from `BaseIntegrationTestWithDataSeeding` automatically:
+1. Clean up test tables before each test
+2. Seed fresh data for each test
+3. Dispose of resources after test completion
 
-#### Adding New Tests
-1. Create test files in the appropriate category folder
-2. Choose the appropriate base class:
-   - `BaseIntegrationTest` for tests that don't need test data
-   - `BaseIntegrationTestWithDataSeeding` for tests that need seeded tables
-3. Use proper naming conventions (`*IntegrationTest.cs`)
-4. Include comprehensive documentation
-5. Handle authentication and error scenarios
-6. Use `RequireTestData()` in tests that depend on seeded data
+## Development Guidelines
+
+## Project Structure
+
+The test project is organized by functionality with clear separation of concerns:
+
+```
+SnowflakeTestApp.Tests/
+├── Connection/                                    # Connection & Authentication Tests
+│   └── TestConnectionEndpointIntegrationTest.cs  # Tests connection validation endpoint
+├── Data/                                         # Data Operations Tests (CRUD)
+│   ├── DatasetEndpointIntegrationTest.cs         # Tests dataset listing endpoints
+│   ├── TableDataEndpointIntegrationTest.cs       # Tests table CRUD operations
+│   └── TableEndpointIntegrationTest.cs           # Tests table listing endpoints
+├── Infrastructure/                               # Test Infrastructure & Utilities
+│   ├── TestDataSeeder.cs                        # Handles test data creation/seeding
+│   ├── TestDataModel.cs                         # Test data models and records
+│   ├── TestDataValidationIntegrationTest.cs     # Validates test data infrastructure
+│   └── ODataResponseModels.cs                   # Response models for OData endpoints
+├── Metadata/                                     # Schema & Metadata Tests
+│   ├── DataSetsMetadataEndpointIntegrationTest.cs # Tests dataset metadata endpoints
+│   └── TableMetadataEndpointIntegrationTest.cs   # Tests table metadata endpoints
+├── Sql/                                          # SQL Execution Tests
+│   └── SqlEndpointIntegrationTest.cs             # Tests direct SQL execution
+├── BaseIntegrationTest.cs                        # Base classes for all integration tests
+├── TestData.cs                                   # Configuration constants and test data
+├── GlobalSuppressions.cs                         # Code analysis suppressions
+├── SnowflakeTestApp.Tests.csproj                # Project configuration
+└── README.md                                     # This documentation
+```
+
+### Key Files and Their Purpose
+
+| File/Directory | Purpose |
+|----------------|---------|
+| **`TestData.cs`** | Central configuration for connection details, endpoints, and test constants |
+| **`BaseIntegrationTest.cs`** | Base class providing common functionality for all integration tests |
+| **`Infrastructure/TestDataSeeder.cs`** | Handles automatic creation and seeding of test tables with sample data |
+| **`Infrastructure/TestDataModel.cs`** | Defines data models used across tests (TestDataRecord, etc.) |
+| **Connection/** | Tests for connection validation and authentication |
+| **Data/** | Tests for all CRUD operations on datasets and tables |
+| **Metadata/** | Tests for schema and metadata retrieval operations |
+| **Sql/** | Tests for direct SQL query execution and management |
+
+
 

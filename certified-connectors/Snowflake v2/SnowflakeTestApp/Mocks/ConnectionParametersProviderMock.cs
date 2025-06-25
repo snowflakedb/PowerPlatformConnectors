@@ -55,15 +55,6 @@ namespace SnowflakeTestApp.Mocks
         /// </summary>
         public static string TestRole = "SYSADMIN";
 
-        /// <summary>
-        /// Bearer token for test authentication
-        /// REQUIRED: Replace with your actual OAuth bearer token
-        /// NOTE: This is only for testing purposes - in production, tokens come from request headers
-        /// Get this from your Snowflake OAuth flow or generate using PowerShell/curl
-        /// Format: "ver:1-hint:..." (long encrypted string)
-        /// </summary>
-        public static string TestBearerToken = "your-oauth-bearer-token-here";
-
         // ====== MOCK IMPLEMENTATION ======
 
         public T GetProperty<T>(string key)
