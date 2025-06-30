@@ -1,11 +1,15 @@
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Castle.Core.Internal;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SnowflakeTestApp.Tests.Infrastructure;
 
 namespace SnowflakeTestApp.Tests.Data
@@ -378,6 +382,63 @@ namespace SnowflakeTestApp.Tests.Data
             Assert.IsFalse(responseContent.Contains(updatedRecord.Email), "Response should not contain the deleted record's email");
             Assert.IsFalse(responseContent.Contains(updatedRecord.Phone), "Response should not contain the deleted record's phone");
             Assert.IsFalse(responseContent.Contains(updatedRecord.Balance.ToString()), "Response should not contain the deleted record's balance");
+        }
+
+        /// <summary>
+        /// Test the GET /datasets/{dataset}/tables/{table}/items and /datasets/{dataset}/tables/{table}/items/{id} returning rows with null values
+        /// </summary>
+        [TestMethod]
+        public async Task GetItemsEndpoints_WithNullValues_ReturnsRows()
+        {
+            // Crete table with null values
+            string createTableSQL = "create or replace TABLE ANIMALS (" +
+                                       "  ID NUMBER(38,0) NOT NULL autoincrement start 1 increment 1 noorder, " +
+                                       "  NAME VARCHAR(16777216) NOT NULL," +
+                                       "  AGE NUMBER(38,0)," +
+                                       "  DATEADDED DATE," +
+                                       "  DATEUPDATED TIMESTAMP_NTZ," +
+                                       "  primary key (ID)" +
+                                       " );";
+
+
+            DataSeeder.ExecuteSqlStatement(createTableSQL).GetAwaiter().GetResult();
+
+            // Insert record with null values
+            string insertSQL = "insert into  DATAVERSE.PUBLIC.ANIMALS(ID, NAME, AGE, DATEADDED, DATEUPDATED) " +
+                               " VALUES(1, 'Cat', 12, null, null)";
+
+            DataSeeder.ExecuteSqlStatement(insertSQL).GetAwaiter().GetResult();
+
+
+            var testToken = GetTestToken();
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {testToken}");
+            HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('ANIMALS')/items");
+
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.IsFalse(string.IsNullOrEmpty(content), "Response content should not be empty");
+
+            var animals = JsonConvert.DeserializeObject<ODataResponse<TestDataRecord>>(content).Value;
+
+            Assert.AreEqual(1, animals.Count, "API should return the same number of records as seeded data");
+
+
+            response = await HttpClient.GetAsync($"{BaseUrl}/datasets('{TestDataset}')/tables('ANIMALS')/items('1')");
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, "Read after delete should return 200 OK");
+
+            // Validate that no test record values are present in the response
+            string responseContent = await response.Content.ReadAsStringAsync();
+            
+            var responseMap = JObject.Parse(responseContent);
+            Assert.AreEqual(1, responseMap["ID"]);
+            Assert.AreEqual("Cat", responseMap["NAME"]);
+            Assert.IsTrue(responseMap.ContainsKey("DATEADDED"));
+            Assert.IsTrue(responseMap.ContainsKey("DATEUPDATED"));
+            Assert.IsTrue(responseMap["DATEADDED"].IsNullOrEmpty());
+            Assert.IsTrue(responseMap["DATEUPDATED"].IsNullOrEmpty());
         }
 
         /// <summary>
