@@ -33,6 +33,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly string _bearerToken;
+        private readonly AccessTokenService _accessTokenService;
 
         /// <summary>
         /// Gets the test records that were seeded into the database
@@ -40,11 +41,11 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// </summary>
         public List<TestDataRecord> SeededRecords { get; private set; } = new List<TestDataRecord>();
 
-        public TestDataSeeder(HttpClient httpClient, string baseUrl, string bearerToken)
+        public TestDataSeeder(HttpClient httpClient, string baseUrl, AccessTokenService accessTokenService)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _baseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
-            _bearerToken = bearerToken ?? throw new ArgumentNullException(nameof(bearerToken));
+            _accessTokenService = accessTokenService ?? throw new ArgumentNullException(nameof(accessTokenService));
         }
 
         /// <summary>
@@ -118,7 +119,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
         /// <summary>
         /// Executes a SQL statement using the SQL endpoint
         /// </summary>
-        private async Task<string> ExecuteSqlStatement(string sqlStatement)
+        public async Task<string> ExecuteSqlStatement(string sqlStatement)
         {
             try
             {
@@ -173,7 +174,7 @@ namespace SnowflakeTestApp.Tests.Infrastructure
 
         private void AddRequestHeaders(HttpRequestMessage request)
         {
-            request.Headers.Add("Authorization", $"Bearer {_bearerToken}");
+            request.Headers.Add("Authorization", $"Bearer {this.GetAccessToken()}");
             request.Headers.Add("Instance", TestData.DefaultSnowflakeHostname);
             request.Headers.Add("Accept", APPLICATION_JSON);
         }
@@ -204,6 +205,11 @@ namespace SnowflakeTestApp.Tests.Infrastructure
             {
                 throw new Exception($"SQL execution failed. Status: {response.StatusCode}, Response: {responseContent}");
             }
+        }
+
+        public string GetAccessToken()
+        {
+            return _accessTokenService.GetAccessTokenAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>

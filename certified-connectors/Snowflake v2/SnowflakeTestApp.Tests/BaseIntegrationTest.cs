@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -15,14 +16,20 @@ namespace SnowflakeTestApp.Tests
     [TestClass]
     public abstract class BaseIntegrationTest
     {
-        private const string PLACEHOLDER_TOKEN_1 = "your-token-here";
-        private const string PLACEHOLDER_TOKEN_2 = "your-actual-bearer-token-here";
+
+        public const string TenantId = "<TenantId>";
+        public const string ClientId = "<ClientId>";
+        public const string ClientSecret = "<CientSecret>";
+        public const string Scope = "<Scope>";
+
+
         private const int APPLICATION_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
         private const string BEARER_TOKEN_CONFIGURATION_ERROR = 
             "Bearer token not configured. Please update ConnectionParametersProviderMock.TestBearerToken with a valid OAuth bearer token. See README.md for instructions.";
         private const string APPLICATION_NOT_RUNNING_ERROR = 
             "SnowflakeTestApp is not running at {0}. Please start the application before running tests. Error: {1}";
 
+        protected static AccessTokenService AccessTokenService;
         protected string BaseUrl => TestData.BaseUrl;
         protected HttpClient HttpClient;
         protected static TestDataSeeder DataSeeder;
@@ -32,6 +39,7 @@ namespace SnowflakeTestApp.Tests
         [AssemblyInitialize]
         public static void AssemblyInitialize(TestContext context)
         {
+            InitializeAccessTokenService();
             InitializeTestDataSeeder();
             SeedTestData();
         }
@@ -56,13 +64,8 @@ namespace SnowflakeTestApp.Tests
 
         protected string GetTestToken()
         {
-            var token = TestData.DefaultBearerToken;
-            
-            if (IsPlaceholderToken(token))
-            {
-                Assert.Inconclusive(BEARER_TOKEN_CONFIGURATION_ERROR);
-            }
-            
+            var service = new AccessTokenService(TestData.TenantId, TestData.ClientId, TestData.ClientSecret, TestData.Scope);
+            var token = service.GetAccessTokenAsync().GetAwaiter().GetResult();
             return token;
         }
 
@@ -104,7 +107,7 @@ namespace SnowflakeTestApp.Tests
         {
             using (var httpClient = CreateHttpClient())
             {
-                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, AccessTokenService);
                 return await dataSeeder.FetchTestDataFromDatabase(tableName);
             }
         }
@@ -113,7 +116,7 @@ namespace SnowflakeTestApp.Tests
         {
             using (var httpClient = CreateHttpClient())
             {
-                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, TestData.DefaultBearerToken);
+                var dataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, AccessTokenService);
                 return await dataSeeder.FetchTestRecordById(id, tableName);
             }
         }
@@ -134,22 +137,18 @@ namespace SnowflakeTestApp.Tests
             Assert.IsNotNull(actual, $"{assertionMessage}: Record not found in database");
             Assert.AreEqual(expected, actual, assertionMessage);
         }
-
+        private static void InitializeAccessTokenService()
+        {
+            AccessTokenService = new AccessTokenService(TenantId, ClientId, ClientSecret, Scope);
+        }
         private static void InitializeTestDataSeeder()
         {
-            var token = TestData.DefaultBearerToken;
-            
-            if (IsPlaceholderToken(token))
-            {
-                throw new InvalidOperationException("Bearer token not configured - cannot proceed with test data setup");
-            }
-
             var httpClient = new HttpClient
             {
                 Timeout = TimeSpan.FromSeconds(TestData.DefaultTimeoutSeconds)
             };
             
-            DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, token);
+            DataSeeder = new TestDataSeeder(httpClient, TestData.BaseUrl, AccessTokenService);
         }
 
         private static void SeedTestData()
@@ -181,13 +180,6 @@ namespace SnowflakeTestApp.Tests
             {
                 // Ignore cleanup errors to prevent masking test failures
             }
-        }
-
-        private static bool IsPlaceholderToken(string token)
-        {
-            return string.IsNullOrEmpty(token) || 
-                   token.Equals(PLACEHOLDER_TOKEN_1, StringComparison.OrdinalIgnoreCase) ||
-                   token.Equals(PLACEHOLDER_TOKEN_2, StringComparison.OrdinalIgnoreCase);
         }
 
         private HttpClient CreateHttpClient()
