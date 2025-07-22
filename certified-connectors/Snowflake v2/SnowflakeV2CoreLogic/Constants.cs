@@ -16,7 +16,7 @@ namespace SnowflakeV2CoreLogic
         /// Connector version information
         /// </summary>
         public static string ConnectorVersion = "2.2.0";
-        
+
         /// <summary>
         /// Connector name for version comments
         /// </summary>
