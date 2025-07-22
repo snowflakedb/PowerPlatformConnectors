@@ -65,10 +65,9 @@ namespace SnowflakeV2CoreLogic.Providers
             SnowflakeTableData? primaryKeyResponse = null;
             using (var latencyLogger = new LatencyLogger(Constants.GetObjectAsync, logger))
             {
-                var primaryKeyStatement = $"WITH t AS (select get_ddl(?,?) tbl_ddl), t1 AS (SELECT POSITION('primary key (', tbl_ddl) + 13 pos, SUBSTR(tbl_ddl, pos, POSITION(')', tbl_ddl, pos) - pos ) str FROM t) SELECT x.value column_name, x.index ordinal_position FROM t1, LATERAL SPLIT_TO_TABLE(t1.str, ',') x;";
+                var primaryKeyStatement = $"SHOW PRIMARY KEYS IN IDENTIFIER(?);";
                 var primaryKeyBindings = new SnowflakeRequestBindings();
-                primaryKeyBindings.AddTextBinding(1, "TABLE");
-                primaryKeyBindings.AddTextBinding(2, tableName);
+                primaryKeyBindings.AddTextBinding(1, tableName);
 
                 primaryKeyResponse = await snowflakeClient.CallAPIAsync(httpClient, primaryKeyStatement, primaryKeyBindings, connectionParameters).ConfigureAwait(true);
             }
@@ -394,7 +393,7 @@ namespace SnowflakeV2CoreLogic.Providers
             return data;
         }
 
-        internal async Task<SnowflakeTableData> GetInformationScehmaAsync(
+        internal async Task<SnowflakeTableData> GetInformationSchemaAsync(
             SnowflakeConnectionParameters connectionParameters)
         {
             string role = connectionParameters.Role;
