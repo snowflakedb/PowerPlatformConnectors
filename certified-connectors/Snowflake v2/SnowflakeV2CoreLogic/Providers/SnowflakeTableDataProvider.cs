@@ -9,6 +9,7 @@ namespace SnowflakeV2CoreLogic.Providers
     using System.Globalization;
     using System.Net.Http;
     using System.Threading.Tasks;
+    using System.Web.OData.Extensions;
     using System.Web.OData.Query;
     using Microsoft.Azure.Connectors.SnowflakeV2Contracts.Interfaces;
     using Microsoft.Azure.Connectors.SnowflakeV2Contracts.Models;
