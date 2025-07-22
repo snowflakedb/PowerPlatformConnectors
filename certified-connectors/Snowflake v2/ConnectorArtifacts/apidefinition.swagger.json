@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
     "info": {
-        "version": "1.1",
+        "version": "2.2",
         "title": "Snowflake",
         "description": "Snowflake Connector allows you to build canvas apps and surface Snowflake data in Virtual Tables, while also enabling faster data processing and analytics compared to traditional solutions. This version fixes support for null values in columns of date and time types.",
         "x-ms-api-annotation": {
