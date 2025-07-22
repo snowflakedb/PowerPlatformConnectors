@@ -55,7 +55,7 @@ namespace SnowflakeV2CoreLogic.Providers
                 }
 
                 // Try and query the schema table for Serivce Principal auth
-                await snowflakeDBOperations.GetInformationScehmaAsync(connParam).ConfigureAwait(true);
+                await snowflakeDBOperations.GetInformationSchemaAsync(connParam).ConfigureAwait(true);
 
                 logger.LogInformation("Test connection succeeded");
                 return new HttpResponseMessage(HttpStatusCode.OK);

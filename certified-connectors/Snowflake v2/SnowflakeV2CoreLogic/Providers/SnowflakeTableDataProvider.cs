@@ -129,7 +129,7 @@ namespace SnowflakeV2CoreLogic.Providers
             try
             {
                 // Grab the first element and look for the column_name property, which will have a value that aligns to the primary key column name.
-                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["COLUMN_NAME"].ToString();
+                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["column_name"].ToString();
             }
             catch (Exception)
             {
@@ -218,7 +218,7 @@ namespace SnowflakeV2CoreLogic.Providers
             try
             {
                 // Grab the first element and look for the column_name property, which will have a value that aligns to the primary key column name.
-                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["COLUMN_NAME"].ToString();
+                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["column_name"].ToString();
             }
             catch (Exception)
             {
@@ -275,7 +275,7 @@ namespace SnowflakeV2CoreLogic.Providers
             try
             {
                 // Grab the first element and look for the column_name property, which will have a value that aligns to the primary key column name.
-                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["COLUMN_NAME"].ToString();
+                primaryKeyColumn = primaryKeyData?.ToGenericDictionaryList()[0]["column_name"].ToString();
             }
             catch (Exception)
             {
