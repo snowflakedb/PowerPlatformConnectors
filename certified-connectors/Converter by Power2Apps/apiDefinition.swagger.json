@@ -4577,12 +4577,12 @@
         "description": "Find and retrieve specific parts of text based on patterns using Regex - https://converter.power2apps.com/2000_dataHandling/V2130_SmartTextSplit"
       }
     },
-    "/V2150_ExecuteJavaScript": {
+    "/V2150_RunCode": {
       "post": {
         "tags": [
           "Converter"
         ],
-        "operationId": "V2150_ExecuteJavaScript",
+        "operationId": "V2150_RunCode",
         "consumes": [
           "application/json",
           "text/json",
@@ -4596,10 +4596,10 @@
         "parameters": [
           {
             "in": "body",
-            "name": "dtoRequestV2150_ExecuteJavaScript",
+            "name": "dtoRequestV2150_RunCode",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DtoRequestV2150_ExecuteJavaScript"
+              "$ref": "#/definitions/DtoRequestV2150_RunCode"
             }
           }
         ],
@@ -4607,13 +4607,13 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/DtoResponseV2150_ExecuteJavaScript"
+              "$ref": "#/definitions/DtoResponseV2150_RunCode"
             }
           }
         },
         "x-ms-visibility": "important",
         "summary": "Run JavaScript Code",
-        "description": "Executes user-defined JavaScript code in Power Automate - https://converter.power2apps.com/2000_dataHandling/V2150_ExecuteJavaScript"
+        "description": "Executes user-defined JavaScript code - https://converter.power2apps.com/2000_dataHandling/V2150_RunCode"
       }
     },
     "/V3012_ConvertImage": {
@@ -7903,7 +7903,7 @@
       },
       "additionalProperties": false
     },
-    "DtoRequestV2150_ExecuteJavaScript": {
+    "DtoRequestV2150_RunCode": {
       "required": [
         "code"
       ],
@@ -10227,7 +10227,7 @@
       },
       "additionalProperties": false
     },
-    "DtoResponseV2150_ExecuteJavaScript": {
+    "DtoResponseV2150_RunCode": {
       "type": "object",
       "properties": {
         "result": {
