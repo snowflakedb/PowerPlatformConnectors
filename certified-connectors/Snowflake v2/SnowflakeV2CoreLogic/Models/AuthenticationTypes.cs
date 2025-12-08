@@ -9,13 +9,18 @@ namespace SnowflakeV2CoreLogic.Models
     public enum AuthenticationType
     {
         /// <summary>
-        /// Microsoft Entra ID
+        /// Microsoft Entra ID (Service Principal - Client Credentials)
         /// </summary>
         AAD,
 
         /// <summary>
-        /// User Delegated
+        /// User Delegated (Requires manual OAuth app configuration)
         /// </summary>
         AADUserDelegated,
+
+        /// <summary>
+        /// OAuth Same Tenant (Simplified user authentication for same-tenant scenarios)
+        /// </summary>
+        OAuthSameTenant,
     }
 }

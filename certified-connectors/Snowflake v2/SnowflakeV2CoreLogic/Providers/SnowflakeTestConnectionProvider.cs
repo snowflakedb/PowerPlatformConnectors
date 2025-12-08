@@ -47,14 +47,14 @@ namespace SnowflakeV2CoreLogic.Providers
                 var connParam = snowflakeConnectionParametersProvider.GetConnectionParameters();
 
                 // For User Delegated Auth, we return 200 OK without any checks
-                // because we don't have snowflake instance
-                // information at the time of connection creation.
+                // because we don't have snowflake instance information at the time of connection creation.
                 if (connParam.AuthenticationType == AuthenticationType.AADUserDelegated)
                 {
                     return new HttpResponseMessage(HttpStatusCode.OK);
                 }
 
-                // Try and query the schema table for Serivce Principal auth
+                // For OAuth Same Tenant and Service Principal auth, test the actual connection
+                // since we have all connection parameters (server, database, etc.) at connection creation time
                 await snowflakeDBOperations.GetInformationSchemaAsync(connParam, "GET testconnection").ConfigureAwait(true);
                 logger.LogInformation("Test connection succeeded");
                 return new HttpResponseMessage(HttpStatusCode.OK);

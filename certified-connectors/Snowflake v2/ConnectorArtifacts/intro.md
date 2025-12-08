@@ -20,7 +20,56 @@ To know more about Virtual network, please check [Virtual Network support overvi
 ## Prerequisites
 - Users must have Microsoft Entra ID for the external authorization. The authorization flow for PowerApps leverages the Service-Principal, and Power Automate will support both Service-Principal and on-behalf-of-user flows.
 - Users must have a premium Power Apps license.
-- Users must have a Snowflake account. 
+- Users must have a Snowflake account.
+
+## Authentication Methods
+
+The Snowflake V2 connector supports three authentication methods. Choose the appropriate method based on your use case:
+
+### 1. Service Principal (Client Credentials) - Recommended for Virtual Tables
+- **Use case:** Model Driven Apps, Virtual Tables, shared connections, production environments
+- **Supports Virtual Tables:** ✅ Yes
+- **Shareable:** ✅ Yes (connections can be shared across users)
+- **Cross-tenant:** ✅ Yes
+- **Configuration:** Requires manual Azure AD app registration with Tenant ID, Client ID, and Client Secret
+- **Connection Parameters:** Server, Database, Warehouse, Role, Schema provided at connection creation
+
+### 2. OAuth (Same Tenant) - NEW - Recommended for Canvas Apps & Power Automate
+- **Use case:** Canvas Apps, Power Automate flows within the same Microsoft Entra tenant
+- **Supports Virtual Tables:** ❌ No (Virtual Tables require Service Principal)
+- **Shareable:** ❌ No (user-specific authentication)
+- **Cross-tenant:** ❌ No (same-tenant only)
+- **Configuration:** Simplified OAuth flow with Microsoft Entra ID authentication
+- **Connection Parameters:** Server, Database, Warehouse, Role, Schema, Resource URL provided at connection creation
+- **Benefits:**
+  - Easier setup compared to Service Principal
+  - No manual Client ID/Secret management required for end users
+  - User identity is preserved in Snowflake audit logs
+
+### 3. User Delegated (Manual OAuth Configuration) - Legacy
+- **Use case:** Power Automate with custom OAuth applications, advanced scenarios
+- **Supports Virtual Tables:** ❌ No
+- **Shareable:** ✅ Yes (with limitations)
+- **Configuration:** Requires manual OAuth app setup with Client ID and Client Secret
+- **Connection Parameters:** Only Client ID, Secret, and Resource URL at connection creation; Server/Database at runtime
+- **Note:** This option is maintained for backward compatibility. For new implementations, use OAuth (Same Tenant) instead.
+
+### Authentication Method Comparison Table
+
+| Feature | Service Principal | OAuth (Same Tenant) | User Delegated |
+|---------|------------------|---------------------|----------------|
+| Virtual Tables Support | ✅ Yes | ❌ No | ❌ No |
+| Canvas Apps Support | ✅ Yes | ✅ Yes | ✅ Yes |
+| Power Automate Support | ✅ Yes | ✅ Yes | ✅ Yes |
+| Connection Sharing | ✅ Yes | ❌ No | ✅ Limited |
+| Cross-Tenant Support | ✅ Yes | ❌ No | ✅ Yes |
+| Setup Complexity | High | Low | High |
+| User Identity in Snowflake | Service Principal | User | User |
+
+**Recommendation:**
+- For **Virtual Tables** or **Model Driven Apps**: Use **Service Principal**
+- For **Canvas Apps** or **Power Automate** (same tenant): Use **OAuth (Same Tenant)**
+- For **cross-tenant** scenarios: Use **Service Principal**
 
 #### A few things that must be kept in mind regarding configuration for using the Snowflake connector
 1. The authorization server can grant the OAuth client an access token on behalf of the user, referred to `DELEGATED BASED AUTH`.

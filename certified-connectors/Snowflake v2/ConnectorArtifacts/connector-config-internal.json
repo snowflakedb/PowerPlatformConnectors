@@ -315,6 +315,137 @@
               }
             }
           }
+        },
+        {
+          "name": "oauthUserSameTenant",
+          "uiDefinition": {
+            "displayName": "OAuth (Same Tenant)",
+            "description": "Use OAuth to authenticate with your Microsoft Entra ID account. Recommended for same-tenant Canvas Apps and Power Automate. Does not support Virtual Tables."
+          },
+          "metadata": {
+            "allowSharing": false
+          },
+          "parameters": {
+            "token": {
+              "type": "oauthSetting",
+              "oAuthSettings": {
+                "identityProvider": "aad",
+                "clientId": "7ab7862c-4c57-491e-8a45-d52a7e023983",
+                "scopes": [],
+                "redirectMode": "GlobalPerConnector",
+                "properties": {
+                  "IsFirstParty": "False",
+                  "AzureActiveDirectoryResourceId": "@@id@@",
+                  "IsOnbehalfofLoginSupported": false
+                },
+                "customParameters": {
+                  "loginUri": {
+                    "value": "https://login.microsoftonline.com"
+                  },
+                  "tenantId": {
+                    "value": "common"
+                  },
+                  "resourceUri": {
+                    "value": "https://analysis.windows.net/powerbi/connector/Snowflake"
+                  }
+                }
+              },
+              "uiDefinition": {
+                "displayName": "Sign in with your Microsoft Entra ID credentials",
+                "description": "Sign in with your Microsoft Entra ID credentials",
+                "tooltip": "Provide Microsoft Entra ID credentials",
+                "constraints": {
+                  "required": "false",
+                  "hidden": "true"
+                }
+              }
+            },
+            "token:TenantId": {
+              "type": "string",
+              "metadata": {
+                "sourceType": "AzureActiveDirectoryTenant"
+              },
+              "uiDefinition": {
+                "constraints": {
+                  "required": "false",
+                  "hidden": "true"
+                }
+              }
+            },
+            "token:resourceUri": {
+              "type": "string",
+              "uiDefinition": {
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false",
+                  "tabIndex": 0
+                },
+                "description": "Snowflake OAuth Audience URL (Resource URL)",
+                "displayName": "Resource URL",
+                "tooltip": "Snowflake OAuth Audience URL (Resource URL)"
+              }
+            },
+            "server": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Snowflake SaaS URL",
+                "description": "Snowflake URL not including HTTPS prefix (e.g., myaccount.snowflakecomputing.com)",
+                "tooltip": "Snowflake SaaS URL",
+                "constraints": {
+                  "tabIndex": 1,
+                  "required": "true"
+                }
+              }
+            },
+            "database": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Snowflake database",
+                "description": "Specify the database to connect to",
+                "tooltip": "Snowflake database",
+                "constraints": {
+                  "tabIndex": 2,
+                  "required": "true"
+                }
+              }
+            },
+            "warehouse": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Warehouse name",
+                "description": "Snowflake warehouse to connect to",
+                "tooltip": "Warehouse name",
+                "constraints": {
+                  "tabIndex": 3,
+                  "required": "true"
+                }
+              }
+            },
+            "role": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Role",
+                "description": "Snowflake role to connect as",
+                "tooltip": "Role",
+                "constraints": {
+                  "tabIndex": 4,
+                  "required": "true"
+                }
+              }
+            },
+            "schema": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Schema",
+                "description": "Snowflake schema to connect to",
+                "tooltip": "Schema",
+                "constraints": {
+                  "tabIndex": 5,
+                  "required": "true"
+                }
+              }
+            }
+          }
         }
 
       ]

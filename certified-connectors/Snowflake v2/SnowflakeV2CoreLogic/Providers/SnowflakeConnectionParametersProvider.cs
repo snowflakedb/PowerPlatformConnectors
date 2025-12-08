@@ -20,6 +20,7 @@ namespace SnowflakeV2CoreLogic.Providers
         {
             ["oauthSP"] = AuthenticationType.AAD,
             ["oauthSPUserDelegated"] = AuthenticationType.AADUserDelegated,
+            ["oauthUserSameTenant"] = AuthenticationType.OAuthSameTenant,
         };
 
         private readonly IConnectionParametersProvider connectionParametersProvider;
@@ -123,7 +124,9 @@ namespace SnowflakeV2CoreLogic.Providers
             string decodedServer = HttpUtility.UrlDecode(HttpUtility.UrlDecode(datasources[0]));
             string decodedDatabase = HttpUtility.UrlDecode(HttpUtility.UrlDecode(datasources[1]));
 
-            if (snowflakeConnectionParameters.AuthenticationType == AuthenticationType.AAD)
+            // Update server/database from URL for Service Principal AND OAuth Same Tenant
+            if (snowflakeConnectionParameters.AuthenticationType == AuthenticationType.AAD ||
+                snowflakeConnectionParameters.AuthenticationType == AuthenticationType.OAuthSameTenant)
             {
                 snowflakeConnectionParameters.Server = decodedServer;
                 snowflakeConnectionParameters.Database = decodedDatabase;

@@ -51,9 +51,11 @@ namespace SnowflakeV2CoreLogic.Utilities
         {
             logger.LogInformation("CallAPIAsync entered");
 
-            if (connectionDetails.AuthenticationType == AuthenticationType.AADUserDelegated)
+            // Block tabular/Virtual Table operations for user-delegated and OAuth same tenant authentication
+            if (connectionDetails.AuthenticationType == AuthenticationType.AADUserDelegated ||
+                connectionDetails.AuthenticationType == AuthenticationType.OAuthSameTenant)
             {
-                throw new Exception("Cannot use Tabular calls with UserDelegated authentication type. Please use Service Principle Auth.");
+                throw new Exception("Cannot use Tabular calls with UserDelegated or OAuth Same Tenant authentication type. Please use Service Principal Auth for Virtual Tables.");
             }
 
             // Use the perReqestConnectionParameters if they are provided, otherwise use the connectionDetails
