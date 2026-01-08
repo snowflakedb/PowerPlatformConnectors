@@ -17,5 +17,10 @@ namespace SnowflakeV2CoreLogic.Models
         /// User Delegated
         /// </summary>
         AADUserDelegated,
+
+        /// <summary>
+        /// User Delegated with On-Behalf-Of flow (1st party)
+        /// </summary>
+        AADUserDelegatedOBO,
     }
 }

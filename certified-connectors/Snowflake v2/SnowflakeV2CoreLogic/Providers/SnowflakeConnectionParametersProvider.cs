@@ -20,6 +20,7 @@ namespace SnowflakeV2CoreLogic.Providers
         {
             ["oauthSP"] = AuthenticationType.AAD,
             ["oauthSPUserDelegated"] = AuthenticationType.AADUserDelegated,
+            ["oauthSPUserDelegatedOBO"] = AuthenticationType.AADUserDelegatedOBO,
         };
 
         private readonly IConnectionParametersProvider connectionParametersProvider;
