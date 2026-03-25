@@ -294,7 +294,7 @@ namespace SnowflakeV2CoreLogic.Utilities
             partitionIndex = 0;
             totalPartitions = 0;
 
-            if (string.IsNullOrEmpty(skipToken))
+            if (skipToken == null || skipToken.Length == 0)
             {
                 return false;
             }
