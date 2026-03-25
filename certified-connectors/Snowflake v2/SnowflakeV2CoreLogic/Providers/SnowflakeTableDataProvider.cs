@@ -65,6 +65,11 @@ namespace SnowflakeV2CoreLogic.Providers
                 throw new ArgumentNullException(nameof(table));
             }
 
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             SnowflakeConnectionParameters connectionParameters = snowflakeConnectionParametersProvider.GetConnectionParameters();
             connectionParameters = SnowflakeConnectionParametersProvider.UpdateConnParametersToUseDataset(request, dataSet, connectionParameters);
 
@@ -100,7 +105,7 @@ namespace SnowflakeV2CoreLogic.Providers
                 return partitionResponse.ToListOfItems();
             }
 
-            bool countRequested = options?.Count?.RawValue?.Equals("true", StringComparison.InvariantCultureIgnoreCase) == true;
+            bool countRequested = options.Count?.RawValue?.Equals("true", StringComparison.InvariantCultureIgnoreCase) == true;
 
             var dataTask = snowflakeDBOperations.ListAllItemsAsync(table, "GET datasets/{dataset}/tables/{table}/items", options, connectionParameters);
             Task<SnowflakeTableData>? countTask = countRequested
@@ -119,7 +124,7 @@ namespace SnowflakeV2CoreLogic.Providers
             int partitionCount = queryResponse.ResultSetMetaData?.PartitionInfo?.Count ?? 1;
             string? statementHandle = queryResponse.StatementHandle;
 
-            if (partitionCount > 1 && !string.IsNullOrEmpty(statementHandle))
+            if (partitionCount > 1 && statementHandle != null && statementHandle.Length > 0)
             {
                 int rowsReturnedInPartition = queryResponse.Data?.Count ?? 0;
 
