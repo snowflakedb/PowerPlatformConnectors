@@ -25,7 +25,7 @@ namespace SnowflakeTestApp.Mocks
         /// Format: account.region.cloud_provider.snowflakecomputing.com
         /// Example: "mycompany.us-west-2.aws.snowflakecomputing.com"
         /// </summary>
-        public static string TestSnowflakeInstance = "pm-connectors.snowflakecomputing.com";
+        public static string TestSnowflakeInstance = "your-account.region.cloud-provider.snowflakecomputing.com";
 
         /// <summary>
         /// Database name for testing
