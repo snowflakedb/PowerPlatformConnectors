@@ -110,7 +110,7 @@ namespace SnowflakeV2CoreLogic.Utilities
 
             if (!IdentifierRegexPattern.IsMatch(identifier))
             {
-                throw new ArgumentException($"Invalid snowflake identifier: {nameOfIdentifier}. Must adhere to the following regex: ${IdentifierFullRegex}");
+                throw new ArgumentException($"Invalid snowflake identifier: {nameOfIdentifier}.");
             }
 
             return identifier;
@@ -383,12 +383,12 @@ namespace SnowflakeV2CoreLogic.Utilities
         {
             if (string.IsNullOrWhiteSpace(url))
             {
-                throw new ArgumentNullException(url);
+                throw new ArgumentNullException(nameOfUrl);
             }
 
             if (!UrlRegexPattern.IsMatch(url))
             {
-                throw new ArgumentException($"Invalid snowflake URL: {nameOfUrl}. Must adhere to the following regex: ${UrlFullRegex}");
+                throw new ArgumentException($"Invalid snowflake URL: {nameOfUrl}.");
             }
 
             return url;
