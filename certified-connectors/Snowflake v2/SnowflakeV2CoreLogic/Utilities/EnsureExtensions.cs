@@ -31,8 +31,9 @@ namespace SnowflakeV2CoreLogic.Utilities
         // Matches a value that is a valid *unquoted* Snowflake identifier (anchored start-to-end).
         private static readonly Regex UnquotedIdentifierRegexPattern = new Regex($@"\A{UnquotedIdentifierRegexRules}\z", RegexOptions.Compiled);
 
-        // Setup the regex for the snowflake URL
-        private static readonly string UrlFullRegex = @"^([a-zA-Z0-9-_.]+\.snowflakecomputing\.com|[a-zA-Z0-9-_.]+\.privatelink\.snowflakecomputing\.com)$";
+        // Setup the regex for the snowflake URL. The top-level domain is ".com" for global
+        // deployments and ".cn" for the China deployment (e.g. account.region.snowflakecomputing.cn).
+        private static readonly string UrlFullRegex = @"^([a-zA-Z0-9-_.]+\.snowflakecomputing\.(?:com|cn)|[a-zA-Z0-9-_.]+\.privatelink\.snowflakecomputing\.(?:com|cn))$";
         private static readonly Regex UrlRegexPattern = new Regex(UrlFullRegex, RegexOptions.Compiled);
 
         /// <summary>

@@ -39,6 +39,20 @@ namespace SnowflakeV2CoreLogic.Tests.Utilities
             Assert.AreEqual("org.account.snowflakecomputing.com", result);
         }
 
+        [TestMethod]
+        public void EnsureValidSnowflakeUrl_ValidChinaHostname_Returns()
+        {
+            var result = "myaccount.cn-north-1.snowflakecomputing.cn".EnsureValidSnowflakeUrl("Instance");
+            Assert.AreEqual("myaccount.cn-north-1.snowflakecomputing.cn", result);
+        }
+
+        [TestMethod]
+        public void EnsureValidSnowflakeUrl_ValidChinaPrivateLinkHostname_Returns()
+        {
+            var result = "myaccount.privatelink.snowflakecomputing.cn".EnsureValidSnowflakeUrl("Instance");
+            Assert.AreEqual("myaccount.privatelink.snowflakecomputing.cn", result);
+        }
+
         #endregion
 
         #region EnsureValidSnowflakeUrl — invalid hostnames
@@ -55,6 +69,20 @@ namespace SnowflakeV2CoreLogic.Tests.Utilities
         public void EnsureValidSnowflakeUrl_SubstringBypassWithSuffix_Throws()
         {
             "foo.snowflakecomputing.com.evil.com".EnsureValidSnowflakeUrl("Instance");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void EnsureValidSnowflakeUrl_ChinaSubstringBypassWithSuffix_Throws()
+        {
+            "foo.snowflakecomputing.cn.evil.com".EnsureValidSnowflakeUrl("Instance");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void EnsureValidSnowflakeUrl_WrongTld_Throws()
+        {
+            "myaccount.snowflakecomputing.cm".EnsureValidSnowflakeUrl("Instance");
         }
 
         [TestMethod]
