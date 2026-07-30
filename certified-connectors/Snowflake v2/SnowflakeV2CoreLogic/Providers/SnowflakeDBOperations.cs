@@ -104,7 +104,7 @@ namespace SnowflakeV2CoreLogic.Providers
             ODataQueryOptions? options = null,
             SnowflakeConnectionParameters? connectionParameters = null)
         {
-            SnowflakeTableData? snowflakeTableData = null;
+            table.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
 
             var fieldsToSelect = "*";
             string? orderBy = null;
@@ -119,6 +119,11 @@ namespace SnowflakeV2CoreLogic.Providers
                 try
                 {
                     queryOptions = QueryOptions.Parse(options);
+                    fieldsToSelect = queryOptions.Select != null ? queryOptions.Select.EnsureValidSelectClause("Select") : "*";
+                    orderBy = options.OrderBy != null ? options.OrderBy.RawValue.EnsureValidOrderByClause("Order By") : null;
+                    top = queryOptions.IsTopSet ? queryOptions.Top.ToString() : Constants.DefaultNumberOfRowsToReturn.ToString();
+                    skip = queryOptions.Skip.ToString();
+                    filter = ConvertODataFilterToSql(options);
                 }
                 catch (ArgumentException ex)
                 {
@@ -128,12 +133,6 @@ namespace SnowflakeV2CoreLogic.Providers
                         HttpStatusCode.BadRequest,
                         ex.Message));
                 }
-
-                fieldsToSelect = queryOptions.Select != null ? queryOptions.Select : "*";
-                orderBy = options.OrderBy != null ? options.OrderBy.RawValue : null;
-                top = queryOptions.IsTopSet ? queryOptions.Top.ToString() : Constants.DefaultNumberOfRowsToReturn.ToString();
-                skip = queryOptions.Skip.ToString();
-                filter = ConvertODataFilterToSql(options);
             }
 
             using (var latencyLogger = new LatencyLogger(Constants.ListAllItemsAsync, logger))
@@ -192,15 +191,8 @@ namespace SnowflakeV2CoreLogic.Providers
                     }
                 }
 
-                // Add request bindings
-                SnowflakeRequestBindings stmtBindings = new SnowflakeRequestBindings();
-                stmtBindings.AddTextBinding(1, table);
-
-                // Fetch the metadata
-                snowflakeTableData = await snowflakeClient.CallAPIAsync(httpClient, stmt, $"{endpoint} - ListAllItems", stmtBindings, connectionParameters, null, false).ConfigureAwait(true);
+                snowflakeTableData = await snowflakeClient.CallAPIAsync(httpClient, stmt, $"{endpoint} - ListAllItems", null, connectionParameters, null, false).ConfigureAwait(true);
             }
-
-            return snowflakeTableData;
         }
 
         public string ConvertODataFilterToSql(ODataQueryOptions options)
@@ -226,7 +218,7 @@ namespace SnowflakeV2CoreLogic.Providers
             SnowflakeTableData? data = null;
 
             // Check the table name and field name adhere to the Snowflake schema
-            tableName.EnsureValidSnowflakeIdentifier("Table Name");
+            tableName.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
             fieldToQuery.EnsureValidSnowflakeIdentifier("Field Name");
 
             using (var latencyLogger = new LatencyLogger(Constants.GetObjectAsync, logger))
@@ -257,6 +249,12 @@ namespace SnowflakeV2CoreLogic.Providers
                 // Create an insert statement
                 var columns = dataToInsert.DynamicProperties.Keys;
                 var values = dataToInsert.DynamicProperties.Values;
+
+                table.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
+                foreach (var column in columns)
+                {
+                    column.EnsureValidSnowflakeIdentifier("Column Name");
+                }
 
                 var valuesPlaceholders = new StringBuilder();
 
@@ -312,6 +310,13 @@ namespace SnowflakeV2CoreLogic.Providers
                     throw new InvalidOperationException("The number of columns and values do not match");
                 }
 
+                table.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
+                primaryKeyColumn.EnsureValidSnowflakeIdentifier("Primary Key Column");
+                foreach (var column in columns)
+                {
+                    column.EnsureValidSnowflakeIdentifier("Column Name");
+                }
+
                 // Loop through all the columns to create the update string
                 var bindingCounter = 1;
                 for (int i = 0; i < columns.Length; i++)
@@ -351,6 +356,9 @@ namespace SnowflakeV2CoreLogic.Providers
 
             using (var latencyLogger = new LatencyLogger(Constants.DeleteItemAsync, logger))
             {
+                table.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
+                primaryKeyColumn.EnsureValidSnowflakeIdentifier("Primary Key Column");
+
                 var query = $"DELETE FROM {table} where {primaryKeyColumn}=?";
 
                 // Add request bindings
@@ -370,6 +378,8 @@ namespace SnowflakeV2CoreLogic.Providers
             SnowflakeConnectionParameters connectionParameters,
             string endpoint)
         {
+            table.EnsureValidQualifiedSnowflakeIdentifier("Table Name");
+
             var query = "SELECT COUNT(*) FROM " + table;
 
             if (options != null)
@@ -417,12 +427,16 @@ namespace SnowflakeV2CoreLogic.Providers
                 return dataWithoutValidation;
             }
 
-            var queryWithSnowflakeConfigValidation = $"USE ROLE \"{role}\";USE WAREHOUSE \"{warehouse}\";USE DATABASE \"{database}\";USE SCHEMA \"{schema}\";SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{schema}';";
+            var queryWithSnowflakeConfigValidation = $"USE ROLE \"{role.EscapeSnowflakeQuotedIdentifier()}\";USE WAREHOUSE \"{warehouse.EscapeSnowflakeQuotedIdentifier()}\";USE DATABASE \"{database.EscapeSnowflakeQuotedIdentifier()}\";USE SCHEMA \"{schema.EscapeSnowflakeQuotedIdentifier()}\";SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?;";
+
+            SnowflakeRequestBindings schemaBindings = new SnowflakeRequestBindings();
+            schemaBindings.AddTextBinding(1, schema);
+
             RequestParameters requestParameters = new RequestParameters
             {
                 MULTI_STATEMENT_COUNT = 5,
             };
-            var dataWithValidation = await snowflakeClient.CallAPIAsync(httpClient, queryWithSnowflakeConfigValidation, $"{endpoint} - GetInformationSchemaValidation", null, null, requestParameters, true).ConfigureAwait(true);
+            var dataWithValidation = await snowflakeClient.CallAPIAsync(httpClient, queryWithSnowflakeConfigValidation, $"{endpoint} - GetInformationSchemaValidation", schemaBindings, null, requestParameters, true).ConfigureAwait(true);
             return dataWithValidation;
         }
     }
