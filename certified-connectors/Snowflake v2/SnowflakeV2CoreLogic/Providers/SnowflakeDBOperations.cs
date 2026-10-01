@@ -423,6 +423,12 @@ namespace SnowflakeV2CoreLogic.Providers
                 try
                 {
                     queryOptions = QueryOptions.Parse(options);
+
+                    if (options.Filter != null)
+                    {
+                        var filterText = ConvertODataFilterToSql(options, connectionParameters?.UseCaseInsensitiveFilters ?? false);
+                        query = $"SELECT COUNT(*) FROM {table} WHERE {filterText}";
+                    }
                 }
                 catch (ArgumentException ex)
                 {
@@ -431,14 +437,6 @@ namespace SnowflakeV2CoreLogic.Providers
                         HttpStatusCode.BadRequest,
                         ex.Message));
                 }
-
-                // Apply OData `$filter` conditions, ignore `$select` and `$orderby`
-                string filterText = string.Empty;
-                if (options.Filter != null)
-                {
-                    filterText = ConvertODataFilterToSql(options, connectionParameters?.UseCaseInsensitiveFilters ?? false);
-                    query = $"SELECT COUNT(*) FROM {table} WHERE {filterText}";
-                }   
             }
 
             SnowflakeRequestBindings queryBindings = new SnowflakeRequestBindings();
