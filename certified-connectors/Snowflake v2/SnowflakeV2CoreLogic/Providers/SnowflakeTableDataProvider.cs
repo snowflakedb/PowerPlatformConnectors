@@ -8,15 +8,18 @@ namespace SnowflakeV2CoreLogic.Providers
     using System.Collections.Generic;
     using System.Collections.Specialized;
     using System.Globalization;
+    using System.Net;
     using System.Net.Http;
     using System.Threading.Tasks;
     using System.Web;
+    using System.Web.Http;
     using System.Web.OData.Extensions;
     using System.Web.OData.Query;
     using Microsoft.Azure.Connectors.SnowflakeV2Contracts.Interfaces;
     using Microsoft.Azure.Connectors.SnowflakeV2Contracts.Models;
     using Microsoft.Extensions.Logging;
     using SnowflakeV2CoreLogic;
+    using SnowflakeV2CoreLogic.Exceptions;
     using SnowflakeV2CoreLogic.Models;
     using SnowflakeV2CoreLogic.Models.SnowflakeAPIModels;
     using SnowflakeV2CoreLogic.Utilities;
@@ -171,6 +174,7 @@ namespace SnowflakeV2CoreLogic.Providers
             SnowflakeTableData? itemsResponse = null;
 
             primaryKeyData = await snowflakeDBOperations.GetPrimaryKeyAsync(table, "GET datasets/{dataset}/tables/{table}/items/{id}", connectionParameters).ConfigureAwait(true);
+            EnsureSingleColumnPrimaryKey(primaryKeyData, table);
 
             string? primaryKeyColumn = null;
             try
@@ -258,6 +262,7 @@ namespace SnowflakeV2CoreLogic.Providers
 
             // First we need to resolve the primarKey since we were only given an ID
             SnowflakeTableData? primaryKeyData = await snowflakeDBOperations.GetPrimaryKeyAsync(table, "PATCH datasets/{dataset}/tables/{table}/items/{id}", connectionParameters).ConfigureAwait(true);
+            EnsureSingleColumnPrimaryKey(primaryKeyData, table);
 
             string? primaryKeyColumn = null;
             try
@@ -312,6 +317,7 @@ namespace SnowflakeV2CoreLogic.Providers
 
             // First we need to resolve the primarKey since we were only given an ID
             SnowflakeTableData? primaryKeyData = await snowflakeDBOperations.GetPrimaryKeyAsync(table, "DELETE datasets/{dataset}/tables/{table}/items/{id}", connectionParameters).ConfigureAwait(true);
+            EnsureSingleColumnPrimaryKey(primaryKeyData, table);
 
             string? primaryKeyColumn = null;
             try
@@ -340,6 +346,24 @@ namespace SnowflakeV2CoreLogic.Providers
                 string errorMessage = $"Multiple items returned when deleting by primary key {primaryKeyColumn}";
 
                 throw new Exception(string.Format(CultureInfo.InvariantCulture, Constants.GenericLoggerMessage, methodName, errorMessage));
+            }
+        }
+
+        /// <summary>
+        /// Items are addressed by a single key value, so tables whose primary key spans several columns are rejected.
+        /// Using only the first key column would match, update or delete every row sharing that column's value.
+        /// </summary>
+        /// <param name="primaryKeyData">The SHOW PRIMARY KEYS response, which has one row per key column.</param>
+        /// <param name="table">The table name.</param>
+        private static void EnsureSingleColumnPrimaryKey(SnowflakeTableData? primaryKeyData, string table)
+        {
+            int keyColumnCount = primaryKeyData?.Data?.Count ?? 0;
+            if (keyColumnCount > 1)
+            {
+                throw new HttpResponseException(
+                    SnowflakeHttpException.CreateHttpResponseMessage(
+                        HttpStatusCode.BadRequest,
+                        $"Table '{table}' has a composite primary key ({keyColumnCount} columns). Reading, updating and deleting individual items is only supported for tables with a single-column primary key."));
             }
         }
     }
