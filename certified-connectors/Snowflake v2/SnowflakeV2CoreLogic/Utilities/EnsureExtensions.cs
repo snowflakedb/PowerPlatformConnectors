@@ -150,6 +150,46 @@ namespace SnowflakeV2CoreLogic.Utilities
         }
 
         /// <summary>
+        /// Validates a possibly-qualified Snowflake object identifier and ensures that its qualifiers,
+        /// if present, resolve to the given database and schema. A null or empty database or schema
+        /// leaves the corresponding qualifier unchecked. Qualifiers are resolved the way Snowflake
+        /// resolves identifiers: unquoted parts are upper-cased and quoted parts are taken verbatim.
+        /// The database and schema are exact names, so they are compared case-sensitively.
+        /// </summary>
+        /// <param name="identifier">The (optionally qualified) identifier.</param>
+        /// <param name="database">The database the identifier must resolve to, if any.</param>
+        /// <param name="schema">The schema the identifier must resolve to, if any.</param>
+        /// <param name="nameOfIdentifier">Identifier for this value (used in error messages).</param>
+        /// <returns>The original value if it is valid and resolves to the given database and schema.</returns>
+        public static string EnsureQualifiedIdentifierWithinScope(
+            this string identifier,
+            string database,
+            string schema,
+            string nameOfIdentifier)
+        {
+            identifier.EnsureValidQualifiedSnowflakeIdentifier(nameOfIdentifier);
+
+            var parts = SplitTopLevel(identifier, '.');
+
+            if (parts.Count > 3)
+            {
+                throw new ArgumentException($"Invalid snowflake identifier: {nameOfIdentifier}. At most a database, schema and object name may be specified.");
+            }
+
+            if (parts.Count >= 2 && !string.IsNullOrEmpty(schema) && !string.Equals(ResolveSnowflakeIdentifier(parts[parts.Count - 2]), schema, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"Invalid snowflake identifier: {nameOfIdentifier}. The schema must match the schema in use.");
+            }
+
+            if (parts.Count == 3 && !string.IsNullOrEmpty(database) && !string.Equals(ResolveSnowflakeIdentifier(parts[0]), database, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"Invalid snowflake identifier: {nameOfIdentifier}. The database must match the database in use.");
+            }
+
+            return identifier;
+        }
+
+        /// <summary>
         /// Returns a safe SQL representation of a caller-supplied identifier (for example a filter
         /// property name) for direct interpolation into a statement. A value that is already a valid
         /// <em>unquoted</em> Snowflake identifier is returned unchanged, preserving Snowflake's
@@ -267,7 +307,7 @@ namespace SnowflakeV2CoreLogic.Utilities
         /// Splits a clause on the given delimiter, ignoring delimiters that appear inside a double
         /// quoted identifier (where an embedded double quote is escaped by doubling it).
         /// </summary>
-        private static IEnumerable<string> SplitTopLevel(string input, char delimiter)
+        private static List<string> SplitTopLevel(string input, char delimiter)
         {
             var segments = new List<string>();
             var current = new StringBuilder();
@@ -303,6 +343,20 @@ namespace SnowflakeV2CoreLogic.Utilities
 
             segments.Add(current.ToString());
             return segments;
+        }
+
+        /// <summary>
+        /// Returns the object name a single, already validated identifier refers to: the unescaped
+        /// body of a quoted identifier, or the upper-cased value of an unquoted one.
+        /// </summary>
+        private static string ResolveSnowflakeIdentifier(string identifier)
+        {
+            if (identifier.Length >= 2 && identifier[0] == '"' && identifier[identifier.Length - 1] == '"')
+            {
+                return identifier.Substring(1, identifier.Length - 2).Replace("\"\"", "\"");
+            }
+
+            return identifier.ToUpperInvariant();
         }
 
         /// <summary>
