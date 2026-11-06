@@ -29,14 +29,17 @@ The connector supports reading and/or updating the following Meisterplan entitie
 - Programs
 - Projects
 - Project Comments (read only)
+- Project Segments
 - Allocation Comments (read only)
 - Resources
+- Resource Team Contributions
+- Risks
 - Role Capacities
 - Roles
 - Scenarios (read only)
 - Sprint (read only)
 - Task Management
-- Teams (read only)
+- Teams
 - Users (read only)
 
 The connector supports triggers for project created, project updated and project deleted events.
